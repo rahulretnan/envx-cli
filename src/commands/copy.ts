@@ -90,18 +90,107 @@ async function executeCopy(rawOptions: any): Promise<void> {
     );
   }
 
-  await processSingleEnvironment(rawOptions, environment, cwd);
+  // Check if environment files exist in current directory vs other directories
+  const currentDirEnvFiles = await FileUtils.findEnvFiles(environment, cwd);
+  const currentDirFiles = currentDirEnvFiles.filter(
+    file => path.dirname(file.path) === cwd && file.exists
+  );
+
+  // If no files in current directory but files exist elsewhere, ask user preference
+  if (
+    currentDirFiles.length === 0 &&
+    availableEnvironments.includes(environment)
+  ) {
+    const allEnvFiles = await FileUtils.findEnvFiles(environment, cwd);
+    const existingFiles = allEnvFiles.filter(file => file.exists);
+
+    if (existingFiles.length > 0) {
+      CliUtils.warning(
+        `No ${CliUtils.formatEnvironment(environment)} files found in current directory.`
+      );
+      CliUtils.info(
+        `Found ${CliUtils.formatEnvironment(environment)} files in other directories:`
+      );
+
+      // Group by directory and show
+      const dirMap = new Map<string, number>();
+      existingFiles.forEach(file => {
+        const dir = path.dirname(file.path);
+        const relativePath = FileUtils.getRelativePath(dir, cwd);
+        const displayDir = relativePath === '' ? '.' : relativePath;
+        dirMap.set(displayDir, (dirMap.get(displayDir) || 0) + 1);
+      });
+
+      Array.from(dirMap.entries()).forEach(([dir, count]) => {
+        console.log(
+          `  • ${CliUtils.formatPath(dir, cwd)} (${count} file${count > 1 ? 's' : ''})`
+        );
+      });
+
+      const processAll = await InteractiveUtils.confirmOperation(
+        'Do you want to process all directories with this environment?',
+        false
+      );
+
+      if (processAll) {
+        await processAllDirectories(rawOptions, environment, cwd);
+        return;
+      } else {
+        CliUtils.info('Operation cancelled.');
+        return;
+      }
+    } else {
+      CliUtils.error(
+        `No ${CliUtils.formatEnvironment(environment)} files found in the project.`
+      );
+      return;
+    }
+  }
+
+  await processSingleEnvironmentInSourceDirectory(rawOptions, environment, cwd);
+}
+
+async function processSingleEnvironmentInSourceDirectory(
+  rawOptions: any,
+  environment: string,
+  cwd: string
+): Promise<void> {
+  // Find environment files in current directory only
+  const envFiles = await FileUtils.findEnvFiles(environment, cwd);
+  const currentDirFiles = envFiles.filter(
+    file => path.dirname(file.path) === cwd && file.exists
+  );
+
+  if (currentDirFiles.length === 0) {
+    CliUtils.error(
+      `No ${CliUtils.formatEnvironment(environment)} files found in current directory.`
+    );
+    return;
+  }
+
+  const result = await processSingleEnvironment(
+    { ...rawOptions, cwd },
+    environment,
+    cwd,
+    false
+  );
+  if (!result.success) {
+    process.exit(1);
+  }
 }
 
 async function processSingleEnvironment(
   rawOptions: any,
   environment: string,
-  cwd: string,
+  workingDir: string,
   isPartOfAll: boolean = false
 ): Promise<{ success: boolean; error?: string }> {
-  // Find environment files
-  const envFiles = await FileUtils.findEnvFiles(environment, cwd);
-  const sourceFiles = envFiles.filter(file => file.exists);
+  // Find environment files - search from root but filter to working directory only
+  const rootCwd = rawOptions.cwd || process.cwd();
+  const envFiles = await FileUtils.findEnvFiles(environment, rootCwd);
+  const sourceFiles = envFiles.filter(
+    file => file.exists && path.dirname(file.path) === workingDir
+  );
 
   if (sourceFiles.length === 0) {
     const message = `No files found for environment '${environment}'`;
@@ -131,22 +220,31 @@ async function processSingleEnvironment(
   const sourcePath = isEncrypted
     ? FileUtils.getEncryptedPath(sourceFile.path)
     : sourceFile.path;
-  const targetPath = path.join(cwd, '.env');
+
+  // Use the working directory as the target directory
+  const targetPath = path.join(workingDir, '.env');
 
   if (!isPartOfAll) {
+    const rootCwd = rawOptions.cwd || process.cwd();
     CliUtils.info(
-      `Source: ${CliUtils.formatPath(FileUtils.getRelativePath(sourcePath, cwd), cwd)}`
+      `Source: ${CliUtils.formatPath(FileUtils.getRelativePath(sourcePath, rootCwd), rootCwd)}`
     );
     CliUtils.info(
-      `Target: ${CliUtils.formatPath(FileUtils.getRelativePath(targetPath, cwd), cwd)}`
+      `Target: ${CliUtils.formatPath(FileUtils.getRelativePath(targetPath, rootCwd), rootCwd)}`
     );
 
     if (isEncrypted) {
       CliUtils.info(`File is encrypted - will decrypt during copy`);
     }
   } else {
+    const rootCwd = rawOptions.cwd || process.cwd();
+    const targetDir = FileUtils.getRelativePath(
+      path.dirname(targetPath),
+      rootCwd
+    );
+    const displayTargetDir = targetDir === '' ? '.' : targetDir;
     CliUtils.info(
-      `Copying ${isEncrypted ? 'encrypted' : ''} ${FileUtils.getRelativePath(sourcePath, cwd)} → .env`
+      `Copying ${isEncrypted ? 'encrypted' : ''} ${FileUtils.getRelativePath(sourcePath, rootCwd)} → ${displayTargetDir}/.env`
     );
   }
 
@@ -202,8 +300,9 @@ async function processSingleEnvironment(
 
     // Get passphrase if not provided
     if (!passphrase || passphrase.trim() === '') {
-      // Try to get from .envrc file
-      const envrcConfig = await FileUtils.readEnvrc(cwd);
+      // Try to get from .envrc file - use root directory for .envrc lookup
+      const rootCwd = rawOptions.cwd || process.cwd();
+      const envrcConfig = await FileUtils.readEnvrc(rootCwd);
       const secretVar = FileUtils.generateSecretVariableName(environment);
 
       if (rawOptions.secret && envrcConfig[rawOptions.secret]) {
@@ -225,7 +324,7 @@ async function processSingleEnvironment(
     validateCopyOptions({
       environment,
       passphrase,
-      cwd,
+      cwd: workingDir,
       overwrite: rawOptions.overwrite,
     });
 
@@ -246,8 +345,9 @@ async function processSingleEnvironment(
     if (targetExists) {
       backupPath = await FileUtils.createBackup(targetPath);
       if (!isPartOfAll) {
+        const rootCwd = rawOptions.cwd || process.cwd();
         CliUtils.info(
-          `Created backup: ${chalk.gray(FileUtils.getRelativePath(backupPath, cwd))}`
+          `Created backup: ${chalk.gray(FileUtils.getRelativePath(backupPath, rootCwd))}`
         );
       }
     }
@@ -306,7 +406,7 @@ async function processSingleEnvironment(
     // Simple copy for unencrypted files
     validateCopyOptions({
       environment,
-      cwd,
+      cwd: workingDir,
       overwrite: rawOptions.overwrite,
     });
 
@@ -351,11 +451,25 @@ async function processSingleEnvironment(
 
     try {
       const targetStats = await FileUtils.getFileStats(targetPath);
+      const rootCwd = rawOptions.cwd || process.cwd();
+      const targetDir = FileUtils.getRelativePath(
+        path.dirname(targetPath),
+        rootCwd
+      );
+      const displayTargetDir = targetDir === '' ? '.' : targetDir;
       console.log(
-        `Target file: ${CliUtils.formatPath('.env', cwd)} (${targetStats.size} bytes)`
+        `Target file: ${CliUtils.formatPath(path.join(displayTargetDir, '.env'), rootCwd)} (${targetStats.size} bytes)`
       );
     } catch {
-      console.log(`Target file: ${CliUtils.formatPath('.env', cwd)}`);
+      const rootCwd = rawOptions.cwd || process.cwd();
+      const targetDir = FileUtils.getRelativePath(
+        path.dirname(targetPath),
+        rootCwd
+      );
+      const displayTargetDir = targetDir === '' ? '.' : targetDir;
+      console.log(
+        `Target file: ${CliUtils.formatPath(path.join(displayTargetDir, '.env'), rootCwd)}`
+      );
     }
 
     // Show usage information
@@ -444,9 +558,9 @@ async function processAllDirectories(
 
     try {
       const result = await processSingleEnvironment(
-        rawOptions,
+        { ...rawOptions, cwd },
         environment,
-        directory,
+        directory, // Use the specific directory being processed
         true // isPartOfAll flag
       );
 
