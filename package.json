@@ -1,6 +1,6 @@
 {
   "name": "envx-cli",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Environment file encryption and management tool",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

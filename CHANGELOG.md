@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [1.1.1](https://github.com/rahulretnan/envx-cli/compare/v1.1.0...v1.1.1) (2025-07-27)
+
+
+### Bug Fixes
+
+* replace shell echo with fs writeFileSync for test file creation ([c6724ee](https://github.com/rahulretnan/envx-cli/commit/c6724ee21f2341ba831e097b2383a764d402a366))
+
 # [1.1.0](https://github.com/rahulretnan/envx-cli/compare/v1.0.1...v1.1.0) (2025-07-27)
 
 
