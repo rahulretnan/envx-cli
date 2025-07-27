@@ -1,5 +1,6 @@
 import chalk from 'chalk';
 import { execSync } from 'child_process';
+import { writeFileSync } from 'fs';
 import shell from 'shelljs';
 import { CommandResult } from '../types';
 
@@ -167,7 +168,7 @@ export class ExecUtils {
 
     try {
       // Create test file
-      shell.echo(testContent).to(testFile);
+      writeFileSync(testFile, testContent);
 
       // Test encryption
       const encryptResult = this.encryptFile(testFile, passphrase);
