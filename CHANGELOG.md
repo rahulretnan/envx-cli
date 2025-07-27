@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+
+
+## [1.0.1](https://github.com/rahulretnan/envx-cli/compare/v1.0.0...v1.0.1) (2025-07-27)
+
+
+### Bug Fixes
+
+* restore release trigger for npm package publishing ([a192f4c](https://github.com/rahulretnan/envx-cli/commit/a192f4c45758fd8a63f83481fa59b27fdb7008f3))
+
+
+### Features
+
+* add changelog generator, release-it, prettier, and eslint setup ([221f499](https://github.com/rahulretnan/envx-cli/commit/221f49994353da0009d9341bc7a53e8a98797fe1))
+* add changelog generator, release-it, prettier, and eslint setup ([604befb](https://github.com/rahulretnan/envx-cli/commit/604befb44110b4cf9c1ba8d495500a4333103caa))
+
 ## [1.0.0] - 2025-07-27
 
 ### Added
