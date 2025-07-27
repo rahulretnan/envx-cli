@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+# [1.1.0](https://github.com/rahulretnan/envx-cli/compare/v1.0.1...v1.1.0) (2025-07-27)
+
+
+### Features
+
+* add --all flag for batch encrypt/decrypt of all environments ([ba42b7a](https://github.com/rahulretnan/envx-cli/commit/ba42b7ac6bb64479981ee7a05075aaa031e39304))
+
+
+### BREAKING CHANGES
+
+* --all cannot be used with --environment or --interactive
+
 ## [1.0.1](https://github.com/rahulretnan/envx-cli/compare/v1.0.0...v1.0.1) (2025-07-27)
 
 
