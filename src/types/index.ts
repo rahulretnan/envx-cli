@@ -44,7 +44,12 @@ export interface EnvrcConfig {
   [key: string]: string;
 }
 
-export type SupportedStage = 'local' | 'development' | 'staging' | 'production' | string;
+export type SupportedStage =
+  | 'local'
+  | 'development'
+  | 'staging'
+  | 'production'
+  | string;
 
 export interface CliContext {
   cwd: string;

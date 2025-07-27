@@ -17,7 +17,17 @@
     "test:coverage": "jest --coverage",
     "test:ci": "jest --ci --coverage --watchAll=false",
     "test:core": "jest __tests__/core",
-    "test:integration": "jest __tests__/integration"
+    "test:integration": "jest __tests__/integration",
+    "lint": "eslint src __tests__ --ext .ts,.js",
+    "lint:fix": "eslint src __tests__ --ext .ts,.js --fix",
+    "format": "prettier --write \"src/**/*.{ts,js,json,md}\" \"__tests__/**/*.{ts,js,json,md}\" \"*.{js,json,md}\"",
+    "format:check": "prettier --check \"src/**/*.{ts,js,json,md}\" \"__tests__/**/*.{ts,js,json,md}\" \"*.{js,json,md}\"",
+    "release": "release-it",
+    "release:minor": "release-it minor",
+    "release:major": "release-it major",
+    "release:patch": "release-it patch",
+    "release:dry": "release-it --dry-run",
+    "prepare": "husky"
   },
   "keywords": [
     "environment",
@@ -29,7 +39,7 @@
     "devops",
     "envx"
   ],
-  "author": "EnvX Contributors",
+  "author": "Rahul Retnan",
   "repository": {
     "type": "git",
     "url": "https://github.com/rahulretnan/envx-cli.git"
@@ -58,17 +68,38 @@
     "zod": "^3.22.4"
   },
   "devDependencies": {
+    "@eslint/js": "^9.32.0",
+    "@release-it/conventional-changelog": "^10.0.1",
     "@types/fs-extra": "^11.0.4",
     "@types/inquirer": "^9.0.7",
     "@types/jest": "^30.0.0",
     "@types/lodash": "^4.14.202",
     "@types/node": "^20.10.5",
     "@types/shelljs": "^0.8.15",
+    "@typescript-eslint/eslint-plugin": "^8.38.0",
+    "@typescript-eslint/parser": "^8.38.0",
+    "eslint": "^8.57.1",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-prettier": "^5.5.3",
+    "husky": "^8.0.3",
     "jest": "^30.0.5",
+    "lint-staged": "^15.2.0",
     "mock-fs": "^5.5.0",
+    "prettier": "^3.6.2",
+    "release-it": "^19.0.4",
     "supertest": "^7.1.4",
     "ts-jest": "^29.4.0",
     "ts-node": "^10.9.2",
-    "typescript": "^5.3.3"
+    "typescript": "^5.3.3",
+    "typescript-eslint": "^8.38.0"
+  },
+  "lint-staged": {
+    "*.{ts,js}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{json,md}": [
+      "prettier --write"
+    ]
   }
 }

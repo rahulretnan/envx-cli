@@ -1,9 +1,9 @@
-import chalk from "chalk";
-import inquirer from "inquirer";
-import path from "path";
-import { EnvrcConfig, StageSecret } from "../types";
-import { CliUtils } from "./exec";
-import { FileUtils } from "./file";
+import chalk from 'chalk';
+import inquirer from 'inquirer';
+import path from 'path';
+import { EnvrcConfig, StageSecret } from '../types';
+import { CliUtils } from './exec';
+import { FileUtils } from './file';
 
 export class InteractiveUtils {
   /**
@@ -11,10 +11,10 @@ export class InteractiveUtils {
    */
   static async selectEnvironment(
     environments: string[],
-    message: string = "Select environment:",
+    message: string = 'Select environment:'
   ): Promise<string> {
     if (environments.length === 0) {
-      throw new Error("No environments found");
+      throw new Error('No environments found');
     }
 
     if (environments.length === 1) {
@@ -23,8 +23,8 @@ export class InteractiveUtils {
 
     const { environment } = await inquirer.prompt([
       {
-        type: "list",
-        name: "environment",
+        type: 'list',
+        name: 'environment',
         message,
         choices: environments,
       },
@@ -38,20 +38,20 @@ export class InteractiveUtils {
    */
   static async selectMultipleEnvironments(
     environments: string[],
-    message: string = "Select environments:",
+    message: string = 'Select environments:'
   ): Promise<string[]> {
     if (environments.length === 0) {
-      throw new Error("No environments found");
+      throw new Error('No environments found');
     }
 
     const { selectedEnvironments } = await inquirer.prompt({
-      type: "checkbox",
-      name: "selectedEnvironments",
+      type: 'checkbox',
+      name: 'selectedEnvironments',
       message,
       choices: environments,
       validate: (input: any) => {
         if (input.length === 0) {
-          return "Please select at least one environment";
+          return 'Please select at least one environment';
         }
         return true;
       },
@@ -64,20 +64,20 @@ export class InteractiveUtils {
    * Prompt for passphrase
    */
   static async promptPassphrase(
-    message: string = "Enter passphrase:",
+    message: string = 'Enter passphrase:'
   ): Promise<string> {
     const { passphrase } = await inquirer.prompt([
       {
-        type: "password",
-        name: "passphrase",
+        type: 'password',
+        name: 'passphrase',
         message,
-        mask: "*",
+        mask: '*',
         validate: (input: string) => {
           if (!input.trim()) {
-            return "Passphrase cannot be empty";
+            return 'Passphrase cannot be empty';
           }
           if (input.length < 4) {
-            return "Passphrase must be at least 4 characters long";
+            return 'Passphrase must be at least 4 characters long';
           }
           return true;
         },
@@ -93,13 +93,13 @@ export class InteractiveUtils {
   static async confirmPassphrase(originalPassphrase: string): Promise<boolean> {
     const { confirmPassphrase } = await inquirer.prompt([
       {
-        type: "password",
-        name: "confirmPassphrase",
-        message: "Confirm passphrase:",
-        mask: "*",
+        type: 'password',
+        name: 'confirmPassphrase',
+        message: 'Confirm passphrase:',
+        mask: '*',
         validate: (input: string) => {
           if (input !== originalPassphrase) {
-            return "Passphrases do not match";
+            return 'Passphrases do not match';
           }
           return true;
         },
@@ -113,7 +113,7 @@ export class InteractiveUtils {
    * Prompt for new passphrase with confirmation
    */
   static async promptNewPassphrase(): Promise<string> {
-    const passphrase = await this.promptPassphrase("Enter new passphrase:");
+    const passphrase = await this.promptPassphrase('Enter new passphrase:');
     await this.confirmPassphrase(passphrase);
     return passphrase;
   }
@@ -122,19 +122,19 @@ export class InteractiveUtils {
    * Prompt for environment name
    */
   static async promptEnvironmentName(
-    message: string = "Enter environment name:",
+    message: string = 'Enter environment name:'
   ): Promise<string> {
     const { environment } = await inquirer.prompt([
       {
-        type: "input",
-        name: "environment",
+        type: 'input',
+        name: 'environment',
         message,
         validate: (input: string) => {
           if (!input.trim()) {
-            return "Environment name cannot be empty";
+            return 'Environment name cannot be empty';
           }
           if (!FileUtils.isValidEnvironmentName(input.trim())) {
-            return "Environment name can only contain letters, numbers, hyphens, and underscores";
+            return 'Environment name can only contain letters, numbers, hyphens, and underscores';
           }
           return true;
         },
@@ -151,26 +151,26 @@ export class InteractiveUtils {
   static async promptSecret(stageName: string): Promise<string> {
     const { secretOption } = await inquirer.prompt([
       {
-        type: "list",
-        name: "secretOption",
+        type: 'list',
+        name: 'secretOption',
         message: `How would you like to set the secret for ${chalk.magenta(stageName)}?`,
         choices: [
-          { name: "Generate random secret", value: "generate" },
-          { name: "Enter custom secret", value: "custom" },
+          { name: 'Generate random secret', value: 'generate' },
+          { name: 'Enter custom secret', value: 'custom' },
         ],
       },
     ]);
 
-    if (secretOption === "generate") {
+    if (secretOption === 'generate') {
       const { secretLength } = await inquirer.prompt([
         {
-          type: "list",
-          name: "secretLength",
-          message: "Select secret length:",
+          type: 'list',
+          name: 'secretLength',
+          message: 'Select secret length:',
           choices: [
-            { name: "32 characters (recommended)", value: 32 },
-            { name: "64 characters (high security)", value: 64 },
-            { name: "16 characters (basic)", value: 16 },
+            { name: '32 characters (recommended)', value: 32 },
+            { name: '64 characters (high security)', value: 64 },
+            { name: '16 characters (basic)', value: 16 },
           ],
           default: 32,
         },
@@ -180,16 +180,16 @@ export class InteractiveUtils {
     } else {
       const { customSecret } = await inquirer.prompt([
         {
-          type: "password",
-          name: "customSecret",
+          type: 'password',
+          name: 'customSecret',
           message: `Enter secret for ${stageName}:`,
-          mask: "*",
+          mask: '*',
           validate: (input: string) => {
             if (!input.trim()) {
-              return "Secret cannot be empty";
+              return 'Secret cannot be empty';
             }
             if (input.length < 8) {
-              return "Secret must be at least 8 characters long";
+              return 'Secret must be at least 8 characters long';
             }
             return true;
           },
@@ -205,33 +205,33 @@ export class InteractiveUtils {
    */
   static async setupEnvrc(
     cwd: string,
-    existingEnvironments: string[] = [],
+    existingEnvironments: string[] = []
   ): Promise<EnvrcConfig> {
-    CliUtils.header("Interactive .envrc Setup");
+    CliUtils.header('Interactive .envrc Setup');
 
     console.log(
-      chalk.gray("This will help you set up secrets for your environments."),
+      chalk.gray('This will help you set up secrets for your environments.')
     );
-    console.log(chalk.gray("The secrets will be stored in a .envrc file."));
+    console.log(chalk.gray('The secrets will be stored in a .envrc file.'));
     console.log();
 
-    const envrcPath = path.join(cwd, ".envrc");
+    const envrcPath = path.join(cwd, '.envrc');
     const envrcExists = await FileUtils.fileExists(envrcPath);
 
     if (envrcExists) {
-      CliUtils.warning(".envrc file already exists");
+      CliUtils.warning('.envrc file already exists');
 
       const { overwrite } = await inquirer.prompt([
         {
-          type: "confirm",
-          name: "overwrite",
-          message: "Do you want to overwrite the existing .envrc file?",
+          type: 'confirm',
+          name: 'overwrite',
+          message: 'Do you want to overwrite the existing .envrc file?',
           default: false,
         },
       ]);
 
       if (!overwrite) {
-        CliUtils.info("Keeping existing .envrc file");
+        CliUtils.info('Keeping existing .envrc file');
         return await FileUtils.readEnvrc(cwd);
       }
     }
@@ -240,15 +240,15 @@ export class InteractiveUtils {
 
     if (existingEnvironments.length > 0) {
       CliUtils.info(
-        `Found existing environments: ${existingEnvironments.map((env) => chalk.magenta(env)).join(", ")}`,
+        `Found existing environments: ${existingEnvironments.map(env => chalk.magenta(env)).join(', ')}`
       );
 
       const { useExisting } = await inquirer.prompt([
         {
-          type: "confirm",
-          name: "useExisting",
+          type: 'confirm',
+          name: 'useExisting',
           message:
-            "Do you want to set up secrets for these existing environments?",
+            'Do you want to set up secrets for these existing environments?',
           default: true,
         },
       ]);
@@ -256,7 +256,7 @@ export class InteractiveUtils {
       if (useExisting) {
         const selectedEnvs = await this.selectMultipleEnvironments(
           existingEnvironments,
-          "Select environments to set up secrets for:",
+          'Select environments to set up secrets for:'
         );
         environments = environments.concat(selectedEnvs);
       }
@@ -265,9 +265,9 @@ export class InteractiveUtils {
     // Ask if they want to add more environments
     const { addMore } = await inquirer.prompt([
       {
-        type: "confirm",
-        name: "addMore",
-        message: "Do you want to add secrets for additional environments?",
+        type: 'confirm',
+        name: 'addMore',
+        message: 'Do you want to add secrets for additional environments?',
         default: environments.length === 0,
       },
     ]);
@@ -276,7 +276,7 @@ export class InteractiveUtils {
       let addingMore = true;
       while (addingMore) {
         const newEnv = await this.promptEnvironmentName(
-          "Enter new environment name:",
+          'Enter new environment name:'
         );
 
         if (!environments.includes(newEnv)) {
@@ -284,15 +284,15 @@ export class InteractiveUtils {
           CliUtils.success(`Added ${chalk.magenta(newEnv)} to the list`);
         } else {
           CliUtils.warning(
-            `Environment ${chalk.magenta(newEnv)} already exists in the list`,
+            `Environment ${chalk.magenta(newEnv)} already exists in the list`
           );
         }
 
         const { continueAdding } = await inquirer.prompt([
           {
-            type: "confirm",
-            name: "continueAdding",
-            message: "Do you want to add another environment?",
+            type: 'confirm',
+            name: 'continueAdding',
+            message: 'Do you want to add another environment?',
             default: false,
           },
         ]);
@@ -302,14 +302,14 @@ export class InteractiveUtils {
     }
 
     if (environments.length === 0) {
-      throw new Error("No environments selected for .envrc setup");
+      throw new Error('No environments selected for .envrc setup');
     }
 
     // Generate secrets for each environment
     const config: EnvrcConfig = {};
     const secrets: StageSecret[] = [];
 
-    CliUtils.subheader("Setting up secrets");
+    CliUtils.subheader('Setting up secrets');
 
     for (const env of environments.sort()) {
       console.log();
@@ -326,34 +326,34 @@ export class InteractiveUtils {
       });
 
       CliUtils.success(
-        `Secret configured for ${chalk.magenta(env)} as ${chalk.cyan(variableName)}`,
+        `Secret configured for ${chalk.magenta(env)} as ${chalk.cyan(variableName)}`
       );
     }
 
     // Show summary
     console.log();
-    CliUtils.subheader("Summary");
+    CliUtils.subheader('Summary');
 
     const tableRows = secrets.map(({ stage, variableName }) => [
       chalk.magenta(stage),
       chalk.cyan(variableName),
-      chalk.green("✓ Set"),
+      chalk.green('✓ Set'),
     ]);
 
-    CliUtils.printTable(["Environment", "Variable Name", "Status"], tableRows);
+    CliUtils.printTable(['Environment', 'Variable Name', 'Status'], tableRows);
 
     // Confirm creation
     const { confirmCreate } = await inquirer.prompt([
       {
-        type: "confirm",
-        name: "confirmCreate",
-        message: "Create .envrc file with these settings?",
+        type: 'confirm',
+        name: 'confirmCreate',
+        message: 'Create .envrc file with these settings?',
         default: true,
       },
     ]);
 
     if (!confirmCreate) {
-      throw new Error("Setup cancelled by user");
+      throw new Error('Setup cancelled by user');
     }
 
     return config;
@@ -364,17 +364,17 @@ export class InteractiveUtils {
    */
   static async selectFiles(
     files: string[],
-    message: string = "Select files:",
+    message: string = 'Select files:'
   ): Promise<string[]> {
     if (files.length === 0) {
-      throw new Error("No files available for selection");
+      throw new Error('No files available for selection');
     }
 
     if (files.length === 1) {
       const { confirm } = await inquirer.prompt([
         {
-          type: "confirm",
-          name: "confirm",
+          type: 'confirm',
+          name: 'confirm',
           message: `Process file ${chalk.cyan(files[0])}?`,
           default: true,
         },
@@ -384,16 +384,16 @@ export class InteractiveUtils {
     }
 
     const { selectedFiles } = await inquirer.prompt({
-      type: "checkbox",
-      name: "selectedFiles",
+      type: 'checkbox',
+      name: 'selectedFiles',
       message,
-      choices: files.map((file) => ({
+      choices: files.map(file => ({
         name: file,
         value: file,
       })),
       validate: (input: any) => {
         if (input.length === 0) {
-          return "Please select at least one file";
+          return 'Please select at least one file';
         }
         return true;
       },
@@ -407,12 +407,12 @@ export class InteractiveUtils {
    */
   static async confirmOperation(
     message: string,
-    defaultValue: boolean = true,
+    defaultValue: boolean = true
   ): Promise<boolean> {
     const { confirm } = await inquirer.prompt([
       {
-        type: "confirm",
-        name: "confirm",
+        type: 'confirm',
+        name: 'confirm',
         message,
         default: defaultValue,
       },
@@ -425,18 +425,18 @@ export class InteractiveUtils {
    * Select operation mode
    */
   static async selectOperationMode(): Promise<
-    "encrypt" | "decrypt" | "create" | "interactive"
+    'encrypt' | 'decrypt' | 'create' | 'interactive'
   > {
     const { operation } = await inquirer.prompt([
       {
-        type: "list",
-        name: "operation",
-        message: "What would you like to do?",
+        type: 'list',
+        name: 'operation',
+        message: 'What would you like to do?',
         choices: [
-          { name: "Encrypt environment files", value: "encrypt" },
-          { name: "Decrypt environment files", value: "decrypt" },
-          { name: "Create new environment file", value: "create" },
-          { name: "Interactive setup (.envrc)", value: "interactive" },
+          { name: 'Encrypt environment files', value: 'encrypt' },
+          { name: 'Decrypt environment files', value: 'decrypt' },
+          { name: 'Create new environment file', value: 'create' },
+          { name: 'Interactive setup (.envrc)', value: 'interactive' },
         ],
       },
     ]);
@@ -449,9 +449,9 @@ export class InteractiveUtils {
    */
   static async withProgress<T>(
     promise: Promise<T>,
-    message: string = "Processing...",
+    message: string = 'Processing...'
   ): Promise<T> {
-    const spinner = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
+    const spinner = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
     let i = 0;
 
     const interval = setInterval(() => {
@@ -476,8 +476,8 @@ export class InteractiveUtils {
    */
   static displayWelcome(): void {
     console.log();
-    console.log(chalk.bold.cyan("🔐 Welcome to EnvX"));
-    console.log(chalk.gray("Environment file encryption and management tool"));
+    console.log(chalk.bold.cyan('🔐 Welcome to EnvX'));
+    console.log(chalk.gray('Environment file encryption and management tool'));
     console.log();
   }
 
@@ -485,18 +485,18 @@ export class InteractiveUtils {
    * Display help for prerequisites
    */
   static displayPrerequisites(): void {
-    CliUtils.header("Prerequisites");
-    console.log("Before using EnvX, make sure you have:");
-    console.log(chalk.yellow("• GPG installed and configured"));
+    CliUtils.header('Prerequisites');
+    console.log('Before using EnvX, make sure you have:');
+    console.log(chalk.yellow('• GPG installed and configured'));
     console.log(
-      chalk.yellow("• Appropriate file permissions in your project directory"),
+      chalk.yellow('• Appropriate file permissions in your project directory')
     );
     console.log();
-    console.log("To install GPG:");
-    console.log(chalk.cyan("• macOS: brew install gnupg"));
-    console.log(chalk.cyan("• Ubuntu/Debian: sudo apt-get install gnupg"));
+    console.log('To install GPG:');
+    console.log(chalk.cyan('• macOS: brew install gnupg'));
+    console.log(chalk.cyan('• Ubuntu/Debian: sudo apt-get install gnupg'));
     console.log(
-      chalk.cyan("• Windows: Download from https://gnupg.org/download/"),
+      chalk.cyan('• Windows: Download from https://gnupg.org/download/')
     );
     console.log();
   }

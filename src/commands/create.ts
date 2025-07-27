@@ -1,33 +1,33 @@
-import chalk from "chalk";
-import { Command } from "commander";
-import path from "path";
-import { validateCreateOptions } from "../schemas";
-import { CliUtils, ExecUtils } from "../utils/exec";
-import { FileUtils } from "../utils/file";
-import { InteractiveUtils } from "../utils/interactive";
+import chalk from 'chalk';
+import { Command } from 'commander';
+import path from 'path';
+import { validateCreateOptions } from '../schemas';
+import { CliUtils, ExecUtils } from '../utils/exec';
+import { FileUtils } from '../utils/file';
+import { InteractiveUtils } from '../utils/interactive';
 
 export const createCreateCommand = (): Command => {
-  const command = new Command("create");
+  const command = new Command('create');
 
   command
-    .description("Create new environment files")
+    .description('Create new environment files')
     .option(
-      "-e, --environment <env>",
-      "Environment name (e.g., development, staging, production)",
+      '-e, --environment <env>',
+      'Environment name (e.g., development, staging, production)'
     )
-    .option("-t, --template <path>", "Template file path to use as base")
-    .option("-c, --cwd <path>", "Working directory path")
+    .option('-t, --template <path>', 'Template file path to use as base')
+    .option('-c, --cwd <path>', 'Working directory path')
     .option(
-      "-i, --interactive",
-      "Interactive mode for creating multiple environments",
+      '-i, --interactive',
+      'Interactive mode for creating multiple environments'
     )
-    .option("--overwrite", "Overwrite existing files without confirmation")
-    .action(async (options) => {
+    .option('--overwrite', 'Overwrite existing files without confirmation')
+    .action(async options => {
       try {
         await executeCreate(options);
       } catch (error) {
         CliUtils.error(
-          `File creation failed: ${error instanceof Error ? error.message : String(error)}`,
+          `File creation failed: ${error instanceof Error ? error.message : String(error)}`
         );
         process.exit(1);
       }
@@ -37,7 +37,7 @@ export const createCreateCommand = (): Command => {
 };
 
 async function executeCreate(rawOptions: any): Promise<void> {
-  CliUtils.header("Environment File Creation");
+  CliUtils.header('Environment File Creation');
 
   // Get working directory
   const cwd = rawOptions.cwd || ExecUtils.getCurrentDir();
@@ -47,7 +47,7 @@ async function executeCreate(rawOptions: any): Promise<void> {
 
   if (existingEnvironments.length > 0) {
     CliUtils.info(
-      `Existing environments: ${existingEnvironments.map((env) => CliUtils.formatEnvironment(env)).join(", ")}`,
+      `Existing environments: ${existingEnvironments.map(env => CliUtils.formatEnvironment(env)).join(', ')}`
     );
   }
 
@@ -60,7 +60,7 @@ async function executeCreate(rawOptions: any): Promise<void> {
       cwd,
       existingEnvironments,
       template,
-      rawOptions.overwrite,
+      rawOptions.overwrite
     );
     return;
   }
@@ -68,14 +68,14 @@ async function executeCreate(rawOptions: any): Promise<void> {
   // Single environment creation
   if (!environment) {
     environment = await InteractiveUtils.promptEnvironmentName(
-      "Enter environment name:",
+      'Enter environment name:'
     );
   }
 
   // Validate environment name
   if (!FileUtils.isValidEnvironmentName(environment)) {
     throw new Error(
-      "Environment name can only contain letters, numbers, hyphens, and underscores",
+      'Environment name can only contain letters, numbers, hyphens, and underscores'
     );
   }
 
@@ -92,8 +92,8 @@ async function executeCreate(rawOptions: any): Promise<void> {
 
     const envFiles = await FileUtils.findEnvFiles(environment, cwd);
     if (envFiles.length > 0) {
-      console.log("Existing files:");
-      envFiles.forEach((file) => {
+      console.log('Existing files:');
+      envFiles.forEach(file => {
         const displayPath = file.encrypted
           ? FileUtils.getEncryptedPath(file.path)
           : file.path;
@@ -102,11 +102,11 @@ async function executeCreate(rawOptions: any): Promise<void> {
 
       if (!rawOptions.overwrite) {
         const confirm = await InteractiveUtils.confirmOperation(
-          "Do you want to create additional files for this environment?",
-          false,
+          'Do you want to create additional files for this environment?',
+          false
         );
         if (!confirm) {
-          CliUtils.info("Operation cancelled.");
+          CliUtils.info('Operation cancelled.');
           return;
         }
       }
@@ -132,10 +132,10 @@ async function executeCreate(rawOptions: any): Promise<void> {
   if ((await FileUtils.fileExists(envFilePath)) && !rawOptions.overwrite) {
     const confirm = await InteractiveUtils.confirmOperation(
       `File ${chalk.cyan(relativePath)} already exists. Overwrite?`,
-      false,
+      false
     );
     if (!confirm) {
-      CliUtils.info("Operation cancelled.");
+      CliUtils.info('Operation cancelled.');
       return;
     }
   }
@@ -150,17 +150,15 @@ async function executeCreate(rawOptions: any): Promise<void> {
 
       // Show next steps
       console.log();
-      CliUtils.info("Next steps:");
+      CliUtils.info('Next steps:');
       console.log(
-        chalk.gray(`• Edit ${relativePath} and add your environment variables`),
+        chalk.gray(`• Edit ${relativePath} and add your environment variables`)
       );
       console.log(
-        chalk.gray(
-          `• Use "envx encrypt -e ${environment}" to encrypt the file`,
-        ),
+        chalk.gray(`• Use "envx encrypt -e ${environment}" to encrypt the file`)
       );
       console.log(
-        chalk.gray("• Add the encrypted .gpg file to version control"),
+        chalk.gray('• Add the encrypted .gpg file to version control')
       );
     } else {
       CliUtils.error(result.message);
@@ -170,7 +168,7 @@ async function executeCreate(rawOptions: any): Promise<void> {
     }
   } catch (error) {
     CliUtils.error(
-      `Failed to create file: ${error instanceof Error ? error.message : String(error)}`,
+      `Failed to create file: ${error instanceof Error ? error.message : String(error)}`
     );
   }
 }
@@ -179,25 +177,25 @@ async function executeInteractiveCreate(
   cwd: string,
   existingEnvironments: string[],
   template?: string,
-  overwrite?: boolean,
+  overwrite?: boolean
 ): Promise<void> {
-  CliUtils.subheader("Interactive Environment Creation");
+  CliUtils.subheader('Interactive Environment Creation');
 
   // Show common environment suggestions
   const commonEnvironments = [
-    "development",
-    "staging",
-    "production",
-    "local",
-    "test",
+    'development',
+    'staging',
+    'production',
+    'local',
+    'test',
   ];
   const suggestedEnvironments = commonEnvironments.filter(
-    (env) => !existingEnvironments.includes(env),
+    env => !existingEnvironments.includes(env)
   );
 
   if (suggestedEnvironments.length > 0) {
-    CliUtils.info("Suggested environments:");
-    suggestedEnvironments.forEach((env) => {
+    CliUtils.info('Suggested environments:');
+    suggestedEnvironments.forEach(env => {
       console.log(`  • ${CliUtils.formatEnvironment(env)}`);
     });
     console.log();
@@ -205,24 +203,24 @@ async function executeInteractiveCreate(
 
   // Get environments to create
   const { createMode } = (await InteractiveUtils.confirmOperation(
-    "Do you want to select from suggested environments?",
+    'Do you want to select from suggested environments?'
   ))
-    ? { createMode: "suggested" }
-    : { createMode: "custom" };
+    ? { createMode: 'suggested' }
+    : { createMode: 'custom' };
 
   let environmentsToCreate: string[] = [];
 
-  if (createMode === "suggested" && suggestedEnvironments.length > 0) {
+  if (createMode === 'suggested' && suggestedEnvironments.length > 0) {
     environmentsToCreate = await InteractiveUtils.selectMultipleEnvironments(
       suggestedEnvironments,
-      "Select environments to create:",
+      'Select environments to create:'
     );
   }
 
   // Add custom environments
   const { addCustom } = (await InteractiveUtils.confirmOperation(
-    "Do you want to add custom environments?",
-    createMode === "custom",
+    'Do you want to add custom environments?',
+    createMode === 'custom'
   ))
     ? { addCustom: true }
     : { addCustom: false };
@@ -231,7 +229,7 @@ async function executeInteractiveCreate(
     let addingMore = true;
     while (addingMore) {
       const newEnv = await InteractiveUtils.promptEnvironmentName(
-        "Enter environment name:",
+        'Enter environment name:'
       );
 
       if (
@@ -240,27 +238,27 @@ async function executeInteractiveCreate(
       ) {
         environmentsToCreate.push(newEnv);
         CliUtils.success(
-          `Added ${CliUtils.formatEnvironment(newEnv)} to creation list`,
+          `Added ${CliUtils.formatEnvironment(newEnv)} to creation list`
         );
       } else if (existingEnvironments.includes(newEnv)) {
         CliUtils.warning(
-          `Environment ${CliUtils.formatEnvironment(newEnv)} already exists`,
+          `Environment ${CliUtils.formatEnvironment(newEnv)} already exists`
         );
         const confirm = await InteractiveUtils.confirmOperation(
-          "Do you want to create files for this environment anyway?",
+          'Do you want to create files for this environment anyway?'
         );
         if (confirm) {
           environmentsToCreate.push(newEnv);
         }
       } else {
         CliUtils.warning(
-          `Environment ${CliUtils.formatEnvironment(newEnv)} already in creation list`,
+          `Environment ${CliUtils.formatEnvironment(newEnv)} already in creation list`
         );
       }
 
       const { continueAdding } = (await InteractiveUtils.confirmOperation(
-        "Do you want to add another environment?",
-        false,
+        'Do you want to add another environment?',
+        false
       ))
         ? { continueAdding: true }
         : { continueAdding: false };
@@ -270,22 +268,22 @@ async function executeInteractiveCreate(
   }
 
   if (environmentsToCreate.length === 0) {
-    CliUtils.warning("No environments selected for creation.");
+    CliUtils.warning('No environments selected for creation.');
     return;
   }
 
   // Ask about template
   if (!template) {
     const { useTemplate } = (await InteractiveUtils.confirmOperation(
-      "Do you want to use a template file?",
-      false,
+      'Do you want to use a template file?',
+      false
     ))
       ? { useTemplate: true }
       : { useTemplate: false };
 
     if (useTemplate) {
       // Look for common template files
-      const commonTemplates = [".env.example", ".env.template", ".env.sample"];
+      const commonTemplates = ['.env.example', '.env.template', '.env.sample'];
       const foundTemplates: string[] = [];
 
       for (const templateName of commonTemplates) {
@@ -297,15 +295,15 @@ async function executeInteractiveCreate(
 
       if (foundTemplates.length > 0) {
         const { templateChoice } = (await InteractiveUtils.selectFiles(
-          [...foundTemplates, "Enter custom path"],
-          "Select template file:",
+          [...foundTemplates, 'Enter custom path'],
+          'Select template file:'
         )) as any;
 
-        if (templateChoice === "Enter custom path") {
+        if (templateChoice === 'Enter custom path') {
           // Prompt for custom template path
           const { customTemplate } =
             (await InteractiveUtils.promptEnvironmentName(
-              "Enter template file path:",
+              'Enter template file path:'
             )) as any;
           template = customTemplate;
         } else {
@@ -315,7 +313,7 @@ async function executeInteractiveCreate(
         // Prompt for template path
         const { customTemplate } =
           (await InteractiveUtils.promptEnvironmentName(
-            "Enter template file path:",
+            'Enter template file path:'
           )) as any;
         template = customTemplate;
       }
@@ -331,7 +329,7 @@ async function executeInteractiveCreate(
         } else {
           template = templatePath;
           CliUtils.success(
-            `Using template: ${CliUtils.formatPath(template, cwd)}`,
+            `Using template: ${CliUtils.formatPath(template, cwd)}`
           );
         }
       }
@@ -340,11 +338,11 @@ async function executeInteractiveCreate(
 
   // Show summary
   console.log();
-  CliUtils.subheader("Creation Summary");
+  CliUtils.subheader('Creation Summary');
   console.log(
-    `Will create ${environmentsToCreate.length} environment file(s):`,
+    `Will create ${environmentsToCreate.length} environment file(s):`
   );
-  environmentsToCreate.forEach((env) => {
+  environmentsToCreate.forEach(env => {
     console.log(`  • .env.${CliUtils.formatEnvironment(env)}`);
   });
 
@@ -354,16 +352,16 @@ async function executeInteractiveCreate(
 
   // Confirm creation
   const confirm = await InteractiveUtils.confirmOperation(
-    "Create these environment files?",
+    'Create these environment files?'
   );
 
   if (!confirm) {
-    CliUtils.info("Operation cancelled.");
+    CliUtils.info('Operation cancelled.');
     return;
   }
 
   // Create files
-  CliUtils.subheader("Creating Files");
+  CliUtils.subheader('Creating Files');
 
   let successCount = 0;
   let errorCount = 0;
@@ -380,10 +378,10 @@ async function executeInteractiveCreate(
       if ((await FileUtils.fileExists(envFilePath)) && !overwrite) {
         const fileConfirm = await InteractiveUtils.confirmOperation(
           `File already exists. Overwrite ${relativePath}?`,
-          false,
+          false
         );
         if (!fileConfirm) {
-          CliUtils.warning("Skipped existing file");
+          CliUtils.warning('Skipped existing file');
           continue;
         }
       }
@@ -399,7 +397,7 @@ async function executeInteractiveCreate(
       }
     } catch (error) {
       CliUtils.error(
-        `Error creating ${relativePath}: ${error instanceof Error ? error.message : String(error)}`,
+        `Error creating ${relativePath}: ${error instanceof Error ? error.message : String(error)}`
       );
       errorCount++;
     }
@@ -407,7 +405,7 @@ async function executeInteractiveCreate(
 
   // Final summary
   console.log();
-  CliUtils.subheader("Creation Results");
+  CliUtils.subheader('Creation Results');
 
   if (successCount > 0) {
     CliUtils.success(`Successfully created ${successCount} file(s)`);
@@ -420,13 +418,13 @@ async function executeInteractiveCreate(
   // Show next steps
   if (successCount > 0) {
     console.log();
-    CliUtils.info("Next steps:");
+    CliUtils.info('Next steps:');
     console.log(
-      chalk.gray("• Edit the created files and add your environment variables"),
+      chalk.gray('• Edit the created files and add your environment variables')
     );
     console.log(chalk.gray('• Use "envx encrypt" to encrypt sensitive files'));
     console.log(
-      chalk.gray('• Use "envx interactive" to set up .envrc with secrets'),
+      chalk.gray('• Use "envx interactive" to set up .envrc with secrets')
     );
   }
 

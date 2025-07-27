@@ -10,17 +10,25 @@ export const createDecryptCommand = (): Command => {
 
   command
     .description('Decrypt environment files')
-    .option('-e, --environment <env>', 'Environment name (e.g., development, staging, production)')
+    .option(
+      '-e, --environment <env>',
+      'Environment name (e.g., development, staging, production)'
+    )
     .option('-p, --passphrase <passphrase>', 'Passphrase for decryption')
     .option('-s, --secret <secret>', 'Secret key from environment variable')
     .option('-c, --cwd <path>', 'Working directory path')
     .option('-i, --interactive', 'Interactive mode for selecting files')
-    .option('--overwrite', 'Overwrite existing decrypted files without confirmation')
-    .action(async (options) => {
+    .option(
+      '--overwrite',
+      'Overwrite existing decrypted files without confirmation'
+    )
+    .action(async options => {
       try {
         await executeDecrypt(options);
       } catch (error) {
-        CliUtils.error(`Decryption failed: ${error instanceof Error ? error.message : String(error)}`);
+        CliUtils.error(
+          `Decryption failed: ${error instanceof Error ? error.message : String(error)}`
+        );
         process.exit(1);
       }
     });
@@ -36,7 +44,9 @@ async function executeDecrypt(rawOptions: any): Promise<void> {
 
   // Check prerequisites
   if (!ExecUtils.isGpgAvailable()) {
-    CliUtils.error('GPG is not available. Please install GPG to use decryption features.');
+    CliUtils.error(
+      'GPG is not available. Please install GPG to use decryption features.'
+    );
     InteractiveUtils.displayPrerequisites();
     process.exit(1);
   }
@@ -46,7 +56,9 @@ async function executeDecrypt(rawOptions: any): Promise<void> {
 
   if (availableEnvironments.length === 0) {
     CliUtils.warning('No environment files found in the current directory.');
-    CliUtils.info('Use the "create" command to create environment files first.');
+    CliUtils.info(
+      'Use the "create" command to create environment files first.'
+    );
     return;
   }
 
@@ -57,7 +69,9 @@ async function executeDecrypt(rawOptions: any): Promise<void> {
   if (!environment) {
     if (availableEnvironments.length === 1) {
       environment = availableEnvironments[0];
-      CliUtils.info(`Using environment: ${CliUtils.formatEnvironment(environment)}`);
+      CliUtils.info(
+        `Using environment: ${CliUtils.formatEnvironment(environment)}`
+      );
     } else {
       environment = await InteractiveUtils.selectEnvironment(
         availableEnvironments,
@@ -68,7 +82,9 @@ async function executeDecrypt(rawOptions: any): Promise<void> {
 
   // Validate environment exists
   if (!availableEnvironments.includes(environment)) {
-    throw new Error(`Environment '${environment}' not found. Available: ${availableEnvironments.join(', ')}`);
+    throw new Error(
+      `Environment '${environment}' not found. Available: ${availableEnvironments.join(', ')}`
+    );
   }
 
   // Get passphrase
@@ -79,12 +95,16 @@ async function executeDecrypt(rawOptions: any): Promise<void> {
 
     if (rawOptions.secret && envrcConfig[rawOptions.secret]) {
       passphrase = envrcConfig[rawOptions.secret];
-      CliUtils.info(`Using secret from .envrc: ${chalk.cyan(rawOptions.secret)}`);
+      CliUtils.info(
+        `Using secret from .envrc: ${chalk.cyan(rawOptions.secret)}`
+      );
     } else if (envrcConfig[secretVar]) {
       passphrase = envrcConfig[secretVar];
       CliUtils.info(`Using secret from .envrc: ${chalk.cyan(secretVar)}`);
     } else {
-      passphrase = await InteractiveUtils.promptPassphrase('Enter decryption passphrase:');
+      passphrase = await InteractiveUtils.promptPassphrase(
+        'Enter decryption passphrase:'
+      );
     }
   }
 
@@ -93,7 +113,7 @@ async function executeDecrypt(rawOptions: any): Promise<void> {
     environment,
     passphrase,
     cwd,
-    secret: rawOptions.secret
+    secret: rawOptions.secret,
   });
 
   // Test GPG operation
@@ -109,8 +129,12 @@ async function executeDecrypt(rawOptions: any): Promise<void> {
   const encryptedFiles = envFiles.filter(file => file.encrypted && file.exists);
 
   if (encryptedFiles.length === 0) {
-    CliUtils.warning(`No encrypted .env.${environment}.gpg files found to decrypt.`);
-    CliUtils.info('Use the "encrypt" command to encrypt environment files first.');
+    CliUtils.warning(
+      `No encrypted .env.${environment}.gpg files found to decrypt.`
+    );
+    CliUtils.info(
+      'Use the "encrypt" command to encrypt environment files first.'
+    );
     return;
   }
 
@@ -124,12 +148,16 @@ async function executeDecrypt(rawOptions: any): Promise<void> {
   let filesToProcess = encryptedFiles;
   if (rawOptions.interactive && encryptedFiles.length > 1) {
     const selectedPaths = await InteractiveUtils.selectFiles(
-      encryptedFiles.map(f => FileUtils.getRelativePath(FileUtils.getEncryptedPath(f.path), cwd)),
+      encryptedFiles.map(f =>
+        FileUtils.getRelativePath(FileUtils.getEncryptedPath(f.path), cwd)
+      ),
       'Select files to decrypt:'
     );
     filesToProcess = encryptedFiles.filter(file => {
       const encryptedPath = FileUtils.getEncryptedPath(file.path);
-      return selectedPaths.includes(FileUtils.getRelativePath(encryptedPath, cwd));
+      return selectedPaths.includes(
+        FileUtils.getRelativePath(encryptedPath, cwd)
+      );
     });
   }
 
@@ -147,7 +175,9 @@ async function executeDecrypt(rawOptions: any): Promise<void> {
   }
 
   if (conflictFiles.length > 0 && !rawOptions.overwrite) {
-    CliUtils.warning(`The following files already exist and will be overwritten:`);
+    CliUtils.warning(
+      `The following files already exist and will be overwritten:`
+    );
     conflictFiles.forEach(file => {
       console.log(`  • ${CliUtils.formatPath(file, cwd)}`);
     });
@@ -192,11 +222,17 @@ async function executeDecrypt(rawOptions: any): Promise<void> {
       let backupPath: string | null = null;
       if (await FileUtils.fileExists(envFile.path)) {
         backupPath = await FileUtils.createBackup(envFile.path);
-        CliUtils.info(`Created backup: ${chalk.gray(FileUtils.getRelativePath(backupPath, cwd))}`);
+        CliUtils.info(
+          `Created backup: ${chalk.gray(FileUtils.getRelativePath(backupPath, cwd))}`
+        );
       }
 
       // Decrypt the file
-      const decryptResult = ExecUtils.decryptFile(encryptedPath, envFile.path, passphrase);
+      const decryptResult = ExecUtils.decryptFile(
+        encryptedPath,
+        envFile.path,
+        passphrase
+      );
 
       if (decryptResult.success) {
         CliUtils.success(`Decrypted: ${chalk.cyan(relativePath)}`);
@@ -222,9 +258,10 @@ async function executeDecrypt(rawOptions: any): Promise<void> {
         }
         errorCount++;
       }
-
     } catch (error) {
-      CliUtils.error(`Error processing ${relativeEncryptedPath}: ${error instanceof Error ? error.message : String(error)}`);
+      CliUtils.error(
+        `Error processing ${relativeEncryptedPath}: ${error instanceof Error ? error.message : String(error)}`
+      );
       errorCount++;
     }
   }
@@ -246,9 +283,15 @@ async function executeDecrypt(rawOptions: any): Promise<void> {
     console.log();
     CliUtils.info('Next steps:');
     console.log(chalk.gray('• Review the decrypted environment files'));
-    console.log(chalk.gray('• Remember: decrypted files contain sensitive data'));
-    console.log(chalk.gray('• Consider re-encrypting files when done: envx encrypt'));
-    console.log(chalk.gray('• Never commit decrypted .env files to version control'));
+    console.log(
+      chalk.gray('• Remember: decrypted files contain sensitive data')
+    );
+    console.log(
+      chalk.gray('• Consider re-encrypting files when done: envx encrypt')
+    );
+    console.log(
+      chalk.gray('• Never commit decrypted .env files to version control')
+    );
   }
 
   // Show security warning
@@ -256,7 +299,11 @@ async function executeDecrypt(rawOptions: any): Promise<void> {
     console.log();
     CliUtils.warning('Security Notice:');
     console.log(chalk.yellow('Decrypted files contain sensitive information.'));
-    console.log(chalk.yellow('Ensure they are not accidentally committed to version control.'));
+    console.log(
+      chalk.yellow(
+        'Ensure they are not accidentally committed to version control.'
+      )
+    );
   }
 
   if (errorCount > 0) {

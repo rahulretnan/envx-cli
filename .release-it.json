@@ -1,0 +1,38 @@
+{
+  "git": {
+    "commitMessage": "chore: release v${version}",
+    "tagName": "v${version}",
+    "push": true,
+    "requireCleanWorkingDir": true,
+    "requireBranch": ["main", "master"]
+  },
+  "npm": {
+    "publish": true,
+    "publishPath": ".",
+    "access": "public"
+  },
+  "github": {
+    "release": true,
+    "releaseName": "Release v${version}",
+    "releaseNotes": null,
+    "preRelease": false,
+    "draft": false,
+    "tokenRef": "GITHUB_TOKEN",
+    "assets": ["dist/**/*"]
+  },
+  "hooks": {
+    "before:init": ["npm run test", "npm run build"],
+    "after:bump": "npm run build",
+    "after:release": "echo Successfully released ${name} v${version} to ${repo.repository}."
+  },
+  "plugins": {
+    "@release-it/conventional-changelog": {
+      "preset": "angular",
+      "infile": "CHANGELOG.md",
+      "header": "# Changelog\n\nAll notable changes to this project will be documented in this file.\n\nThe format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),\nand this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).\n\n",
+      "gitRawCommitsOpts": {
+        "path": "."
+      }
+    }
+  }
+}

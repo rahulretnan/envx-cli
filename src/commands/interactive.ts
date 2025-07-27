@@ -12,13 +12,18 @@ export const createInteractiveCommand = (): Command => {
   command
     .description('Interactive mode for setting up .envrc file with secrets')
     .option('-c, --cwd <path>', 'Working directory path')
-    .option('--overwrite', 'Overwrite existing .envrc file without confirmation')
+    .option(
+      '--overwrite',
+      'Overwrite existing .envrc file without confirmation'
+    )
     .option('--generate', 'Generate random secrets for all environments')
-    .action(async (options) => {
+    .action(async options => {
       try {
         await executeInteractive(options);
       } catch (error) {
-        CliUtils.error(`Interactive setup failed: ${error instanceof Error ? error.message : String(error)}`);
+        CliUtils.error(
+          `Interactive setup failed: ${error instanceof Error ? error.message : String(error)}`
+        );
         process.exit(1);
       }
     });
@@ -35,7 +40,7 @@ async function executeInteractive(rawOptions: any): Promise<void> {
   // Validate options
   const options = validateInteractiveOptions({
     overwrite: rawOptions.overwrite,
-    cwd
+    cwd,
   });
 
   // Find existing environments
@@ -46,7 +51,9 @@ async function executeInteractive(rawOptions: any): Promise<void> {
   const envrcExists = await FileUtils.fileExists(envrcPath);
 
   if (envrcExists) {
-    CliUtils.info(`Found existing .envrc file: ${CliUtils.formatPath(envrcPath, cwd)}`);
+    CliUtils.info(
+      `Found existing .envrc file: ${CliUtils.formatPath(envrcPath, cwd)}`
+    );
 
     if (!rawOptions.overwrite) {
       const showCurrent = await InteractiveUtils.confirmOperation(
@@ -57,14 +64,18 @@ async function executeInteractive(rawOptions: any): Promise<void> {
       if (showCurrent) {
         try {
           const currentConfig = await FileUtils.readEnvrc(cwd);
-          const secrets = Object.keys(currentConfig).filter(key => key.endsWith('_SECRET'));
+          const secrets = Object.keys(currentConfig).filter(key =>
+            key.endsWith('_SECRET')
+          );
 
           if (secrets.length > 0) {
             console.log();
             CliUtils.subheader('Current Secrets in .envrc');
             secrets.forEach(secret => {
               const stage = secret.replace('_SECRET', '').toLowerCase();
-              console.log(`  • ${CliUtils.formatEnvironment(stage)}: ${chalk.cyan(secret)}`);
+              console.log(
+                `  • ${CliUtils.formatEnvironment(stage)}: ${chalk.cyan(secret)}`
+              );
             });
           } else {
             CliUtils.warning('No secrets found in current .envrc file');
@@ -80,7 +91,9 @@ async function executeInteractive(rawOptions: any): Promise<void> {
       );
 
       if (!overwrite) {
-        CliUtils.info('Keeping existing .envrc file. Use --overwrite flag to force overwrite.');
+        CliUtils.info(
+          'Keeping existing .envrc file. Use --overwrite flag to force overwrite.'
+        );
         await showEnvrcUsageHelp(cwd);
         return;
       }
@@ -89,21 +102,25 @@ async function executeInteractive(rawOptions: any): Promise<void> {
 
   try {
     // Run interactive setup
-    const envrcConfig = await InteractiveUtils.setupEnvrc(cwd, existingEnvironments);
+    const envrcConfig = await InteractiveUtils.setupEnvrc(
+      cwd,
+      existingEnvironments
+    );
 
     // Write the .envrc file
     const writeResult = await FileUtils.writeEnvrc(cwd, envrcConfig);
 
     if (writeResult.success) {
       CliUtils.success(`Successfully created .envrc file`);
-      console.log(`Location: ${CliUtils.formatPath(writeResult.filePath!, cwd)}`);
+      console.log(
+        `Location: ${CliUtils.formatPath(writeResult.filePath!, cwd)}`
+      );
 
       // Show usage information
       await showEnvrcUsageHelp(cwd);
 
       // Show next steps for direnv
       await showDirenvSetup();
-
     } else {
       CliUtils.error(`Failed to create .envrc file: ${writeResult.message}`);
       if (writeResult.error) {
@@ -111,7 +128,6 @@ async function executeInteractive(rawOptions: any): Promise<void> {
       }
       process.exit(1);
     }
-
   } catch (error) {
     if (error instanceof Error && error.message === 'Setup cancelled by user') {
       CliUtils.info('Setup cancelled.');
@@ -126,7 +142,9 @@ async function showEnvrcUsageHelp(cwd: string): Promise<void> {
   CliUtils.subheader('How to Use .envrc');
 
   const envrcConfig = await FileUtils.readEnvrc(cwd);
-  const secrets = Object.keys(envrcConfig).filter(key => key.endsWith('_SECRET'));
+  const secrets = Object.keys(envrcConfig).filter(key =>
+    key.endsWith('_SECRET')
+  );
 
   console.log('Your .envrc file contains secrets for encryption/decryption.');
   console.log('You can now use envx commands without specifying passphrases:');
@@ -158,7 +176,9 @@ async function showDirenvSetup(): Promise<void> {
     console.log('To enable automatic loading:');
     console.log(chalk.cyan('  direnv allow'));
     console.log();
-    console.log('This will automatically export the secrets when you enter this directory.');
+    console.log(
+      'This will automatically export the secrets when you enter this directory.'
+    );
   } catch {
     CliUtils.info('Direnv is not installed. To install:');
     console.log();
@@ -216,27 +236,29 @@ async function showEnvironmentSummary(cwd: string): Promise<void> {
     const totalFiles = unencrypted.length + encrypted.length;
     const fileCount = totalFiles > 0 ? `${totalFiles} file(s)` : 'No files';
 
-    tableRows.push([
-      CliUtils.formatEnvironment(env),
-      fileCount,
-      status
-    ]);
+    tableRows.push([CliUtils.formatEnvironment(env), fileCount, status]);
   }
 
   CliUtils.printTable(['Environment', 'Files', 'Status'], tableRows);
 
   console.log();
   CliUtils.info('Commands to manage your environment files:');
-  console.log(chalk.gray('• envx create -e <env>     Create new environment file'));
-  console.log(chalk.gray('• envx encrypt -e <env>    Encrypt environment files'));
-  console.log(chalk.gray('• envx decrypt -e <env>    Decrypt environment files'));
+  console.log(
+    chalk.gray('• envx create -e <env>     Create new environment file')
+  );
+  console.log(
+    chalk.gray('• envx encrypt -e <env>    Encrypt environment files')
+  );
+  console.log(
+    chalk.gray('• envx decrypt -e <env>    Decrypt environment files')
+  );
 }
 
 // Export additional helper for other commands
 export async function showQuickStart(cwd: string): Promise<void> {
   CliUtils.header('EnvX Quick Start');
 
-  console.log('Welcome to EnvX! Here\'s how to get started:');
+  console.log("Welcome to EnvX! Here's how to get started:");
   console.log();
 
   console.log(chalk.bold('1. Create environment files:'));

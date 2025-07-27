@@ -1,70 +1,69 @@
-describe("Command Core Logic", () => {
-  describe("Encrypt Command Workflow", () => {
-    it("should validate required inputs", () => {
+describe('Command Core Logic', () => {
+  describe('Encrypt Command Workflow', () => {
+    it('should validate required inputs', () => {
       const validateEncryptInputs = (
         environment: string,
-        passphrase: string,
+        passphrase: string
       ) => {
-        if (!environment || environment.trim() === "") {
-          return { valid: false, error: "Environment is required" };
+        if (!environment || environment.trim() === '') {
+          return { valid: false, error: 'Environment is required' };
         }
-        if (!passphrase || passphrase.trim() === "") {
-          return { valid: false, error: "Passphrase is required" };
+        if (!passphrase || passphrase.trim() === '') {
+          return { valid: false, error: 'Passphrase is required' };
         }
         return { valid: true };
       };
 
-      expect(validateEncryptInputs("production", "secret123")).toEqual({
+      expect(validateEncryptInputs('production', 'secret123')).toEqual({
         valid: true,
       });
-      expect(validateEncryptInputs("", "secret123")).toEqual({
+      expect(validateEncryptInputs('', 'secret123')).toEqual({
         valid: false,
-        error: "Environment is required",
+        error: 'Environment is required',
       });
-      expect(validateEncryptInputs("production", "")).toEqual({
+      expect(validateEncryptInputs('production', '')).toEqual({
         valid: false,
-        error: "Passphrase is required",
+        error: 'Passphrase is required',
       });
     });
 
-    it("should determine target files for encryption", () => {
+    it('should determine target files for encryption', () => {
       const determineTargetFiles = (
         environment: string,
-        availableFiles: string[],
+        availableFiles: string[]
       ) => {
         const targetPattern = `.env.${environment}`;
         const encryptedPattern = `.env.${environment}.gpg`;
 
         return availableFiles.filter(
-          (file) =>
-            file === targetPattern &&
-            !availableFiles.includes(encryptedPattern),
+          file =>
+            file === targetPattern && !availableFiles.includes(encryptedPattern)
         );
       };
 
-      const files = [".env.development", ".env.production", ".env.staging.gpg"];
+      const files = ['.env.development', '.env.production', '.env.staging.gpg'];
 
-      expect(determineTargetFiles("development", files)).toEqual([
-        ".env.development",
+      expect(determineTargetFiles('development', files)).toEqual([
+        '.env.development',
       ]);
-      expect(determineTargetFiles("production", files)).toEqual([
-        ".env.production",
+      expect(determineTargetFiles('production', files)).toEqual([
+        '.env.production',
       ]);
-      expect(determineTargetFiles("staging", files)).toEqual([]); // Already encrypted
+      expect(determineTargetFiles('staging', files)).toEqual([]); // Already encrypted
     });
 
-    it("should check prerequisites for encryption", () => {
+    it('should check prerequisites for encryption', () => {
       const checkEncryptPrerequisites = (
         hasGpg: boolean,
-        hasFiles: boolean,
+        hasFiles: boolean
       ) => {
         const issues = [];
 
         if (!hasGpg) {
-          issues.push("GPG is not available");
+          issues.push('GPG is not available');
         }
         if (!hasFiles) {
-          issues.push("No files found to encrypt");
+          issues.push('No files found to encrypt');
         }
 
         return {
@@ -79,184 +78,184 @@ describe("Command Core Logic", () => {
       });
       expect(checkEncryptPrerequisites(false, true)).toEqual({
         canProceed: false,
-        issues: ["GPG is not available"],
+        issues: ['GPG is not available'],
       });
       expect(checkEncryptPrerequisites(true, false)).toEqual({
         canProceed: false,
-        issues: ["No files found to encrypt"],
+        issues: ['No files found to encrypt'],
       });
     });
   });
 
-  describe("Decrypt Command Workflow", () => {
-    it("should validate decrypt inputs", () => {
+  describe('Decrypt Command Workflow', () => {
+    it('should validate decrypt inputs', () => {
       const validateDecryptInputs = (
         environment: string,
-        passphrase: string,
+        passphrase: string
       ) => {
-        if (!environment || environment.trim() === "") {
-          return { valid: false, error: "Environment is required" };
+        if (!environment || environment.trim() === '') {
+          return { valid: false, error: 'Environment is required' };
         }
-        if (!passphrase || passphrase.trim() === "") {
-          return { valid: false, error: "Passphrase is required" };
+        if (!passphrase || passphrase.trim() === '') {
+          return { valid: false, error: 'Passphrase is required' };
         }
         return { valid: true };
       };
 
-      expect(validateDecryptInputs("production", "secret123")).toEqual({
+      expect(validateDecryptInputs('production', 'secret123')).toEqual({
         valid: true,
       });
-      expect(validateDecryptInputs("", "secret123")).toEqual({
+      expect(validateDecryptInputs('', 'secret123')).toEqual({
         valid: false,
-        error: "Environment is required",
+        error: 'Environment is required',
       });
-      expect(validateDecryptInputs("production", "")).toEqual({
+      expect(validateDecryptInputs('production', '')).toEqual({
         valid: false,
-        error: "Passphrase is required",
+        error: 'Passphrase is required',
       });
     });
 
-    it("should find encrypted files for decryption", () => {
+    it('should find encrypted files for decryption', () => {
       const findEncryptedFiles = (
         environment: string,
-        availableFiles: string[],
+        availableFiles: string[]
       ) => {
         const encryptedPattern = `.env.${environment}.gpg`;
-        return availableFiles.filter((file) => file === encryptedPattern);
+        return availableFiles.filter(file => file === encryptedPattern);
       };
 
       const files = [
-        ".env.development",
-        ".env.production.gpg",
-        ".env.staging.gpg",
+        '.env.development',
+        '.env.production.gpg',
+        '.env.staging.gpg',
       ];
 
-      expect(findEncryptedFiles("production", files)).toEqual([
-        ".env.production.gpg",
+      expect(findEncryptedFiles('production', files)).toEqual([
+        '.env.production.gpg',
       ]);
-      expect(findEncryptedFiles("staging", files)).toEqual([
-        ".env.staging.gpg",
+      expect(findEncryptedFiles('staging', files)).toEqual([
+        '.env.staging.gpg',
       ]);
-      expect(findEncryptedFiles("development", files)).toEqual([]); // Not encrypted
+      expect(findEncryptedFiles('development', files)).toEqual([]); // Not encrypted
     });
 
-    it("should determine output paths for decryption", () => {
+    it('should determine output paths for decryption', () => {
       const getDecryptionOutputPath = (encryptedFile: string) => {
-        return encryptedFile.replace(/\.gpg$/, "");
+        return encryptedFile.replace(/\.gpg$/, '');
       };
 
-      expect(getDecryptionOutputPath(".env.production.gpg")).toBe(
-        ".env.production",
+      expect(getDecryptionOutputPath('.env.production.gpg')).toBe(
+        '.env.production'
       );
-      expect(getDecryptionOutputPath("/path/.env.staging.gpg")).toBe(
-        "/path/.env.staging",
+      expect(getDecryptionOutputPath('/path/.env.staging.gpg')).toBe(
+        '/path/.env.staging'
       );
     });
   });
 
-  describe("Create Command Workflow", () => {
-    it("should validate environment name for creation", () => {
+  describe('Create Command Workflow', () => {
+    it('should validate environment name for creation', () => {
       const validateEnvironmentName = (name: string) => {
-        if (!name || name.trim() === "") {
-          return { valid: false, error: "Environment name is required" };
+        if (!name || name.trim() === '') {
+          return { valid: false, error: 'Environment name is required' };
         }
 
         // Check valid characters (letters, numbers, hyphens, underscores)
         if (!/^[a-zA-Z][a-zA-Z0-9_-]*$/.test(name)) {
-          return { valid: false, error: "Invalid environment name format" };
+          return { valid: false, error: 'Invalid environment name format' };
         }
 
         return { valid: true };
       };
 
-      expect(validateEnvironmentName("development")).toEqual({ valid: true });
-      expect(validateEnvironmentName("prod-123")).toEqual({ valid: true });
-      expect(validateEnvironmentName("test_env")).toEqual({ valid: true });
-      expect(validateEnvironmentName("")).toEqual({
+      expect(validateEnvironmentName('development')).toEqual({ valid: true });
+      expect(validateEnvironmentName('prod-123')).toEqual({ valid: true });
+      expect(validateEnvironmentName('test_env')).toEqual({ valid: true });
+      expect(validateEnvironmentName('')).toEqual({
         valid: false,
-        error: "Environment name is required",
+        error: 'Environment name is required',
       });
-      expect(validateEnvironmentName("123invalid")).toEqual({
+      expect(validateEnvironmentName('123invalid')).toEqual({
         valid: false,
-        error: "Invalid environment name format",
+        error: 'Invalid environment name format',
       });
-      expect(validateEnvironmentName("test env")).toEqual({
+      expect(validateEnvironmentName('test env')).toEqual({
         valid: false,
-        error: "Invalid environment name format",
+        error: 'Invalid environment name format',
       });
     });
 
-    it("should check for file conflicts", () => {
+    it('should check for file conflicts', () => {
       const checkFileConflict = (
         targetFile: string,
         existingFiles: string[],
-        overwrite: boolean,
+        overwrite: boolean
       ) => {
         const exists = existingFiles.includes(targetFile);
 
         if (exists && !overwrite) {
           return {
             canCreate: false,
-            error: "File already exists and overwrite is disabled",
+            error: 'File already exists and overwrite is disabled',
           };
         }
 
         return { canCreate: true };
       };
 
-      const files = [".env.development", ".env.production"];
+      const files = ['.env.development', '.env.production'];
 
-      expect(checkFileConflict(".env.staging", files, false)).toEqual({
+      expect(checkFileConflict('.env.staging', files, false)).toEqual({
         canCreate: true,
       });
-      expect(checkFileConflict(".env.development", files, false)).toEqual({
+      expect(checkFileConflict('.env.development', files, false)).toEqual({
         canCreate: false,
-        error: "File already exists and overwrite is disabled",
+        error: 'File already exists and overwrite is disabled',
       });
-      expect(checkFileConflict(".env.development", files, true)).toEqual({
+      expect(checkFileConflict('.env.development', files, true)).toEqual({
         canCreate: true,
       });
     });
 
-    it("should determine template source", () => {
+    it('should determine template source', () => {
       const determineTemplateSource = (
         templatePath?: string,
-        availableFiles: string[] = [],
+        availableFiles: string[] = []
       ) => {
         if (templatePath && availableFiles.includes(templatePath)) {
-          return { type: "custom", path: templatePath };
+          return { type: 'custom', path: templatePath };
         }
 
-        if (availableFiles.includes(".env.example")) {
-          return { type: "example", path: ".env.example" };
+        if (availableFiles.includes('.env.example')) {
+          return { type: 'example', path: '.env.example' };
         }
 
-        return { type: "default", path: null };
+        return { type: 'default', path: null };
       };
 
-      const files = [".env.example", ".env.template"];
+      const files = ['.env.example', '.env.template'];
 
-      expect(determineTemplateSource(".env.template", files)).toEqual({
-        type: "custom",
-        path: ".env.template",
+      expect(determineTemplateSource('.env.template', files)).toEqual({
+        type: 'custom',
+        path: '.env.template',
       });
       expect(determineTemplateSource(undefined, files)).toEqual({
-        type: "example",
-        path: ".env.example",
+        type: 'example',
+        path: '.env.example',
       });
       expect(determineTemplateSource(undefined, [])).toEqual({
-        type: "default",
+        type: 'default',
         path: null,
       });
     });
   });
 
-  describe("Interactive Command Workflow", () => {
-    it("should organize environments by status", () => {
+  describe('Interactive Command Workflow', () => {
+    it('should organize environments by status', () => {
       const organizeEnvironments = (allFiles: string[]) => {
         const environments = new Map();
 
-        allFiles.forEach((file) => {
+        allFiles.forEach(file => {
           const envMatch = file.match(/^\.env\.([^.]+)(\.gpg)?$/);
           if (envMatch) {
             const envName = envMatch[1];
@@ -285,42 +284,42 @@ describe("Command Core Logic", () => {
       };
 
       const files = [
-        ".env.development",
-        ".env.production.gpg",
-        ".env.staging",
-        ".env.staging.gpg",
+        '.env.development',
+        '.env.production.gpg',
+        '.env.staging',
+        '.env.staging.gpg',
       ];
       const result = organizeEnvironments(files);
 
       expect(result).toContainEqual({
-        name: "development",
+        name: 'development',
         encrypted: false,
         unencrypted: true,
       });
       expect(result).toContainEqual({
-        name: "production",
+        name: 'production',
         encrypted: true,
         unencrypted: false,
       });
       expect(result).toContainEqual({
-        name: "staging",
+        name: 'staging',
         encrypted: true,
         unencrypted: true,
       });
     });
 
-    it("should generate secret configuration", () => {
+    it('should generate secret configuration', () => {
       const generateSecretConfig = (
         environments: string[],
-        secretLength: number = 32,
+        secretLength: number = 32
       ) => {
         const config: Record<string, string> = {};
 
-        environments.forEach((env) => {
+        environments.forEach(env => {
           const secretName = `${env.toUpperCase()}_SECRET`;
           const secretValue = Array.from({ length: secretLength }, () =>
-            Math.floor(Math.random() * 16).toString(16),
-          ).join("");
+            Math.floor(Math.random() * 16).toString(16)
+          ).join('');
 
           config[secretName] = secretValue;
         });
@@ -328,18 +327,18 @@ describe("Command Core Logic", () => {
         return config;
       };
 
-      const config = generateSecretConfig(["development", "production"], 8);
+      const config = generateSecretConfig(['development', 'production'], 8);
 
-      expect(config).toHaveProperty("DEVELOPMENT_SECRET");
-      expect(config).toHaveProperty("PRODUCTION_SECRET");
-      expect(config["DEVELOPMENT_SECRET"]).toHaveLength(8);
-      expect(config["PRODUCTION_SECRET"]).toHaveLength(8);
-      expect(config["DEVELOPMENT_SECRET"]).toMatch(/^[a-f0-9]{8}$/);
+      expect(config).toHaveProperty('DEVELOPMENT_SECRET');
+      expect(config).toHaveProperty('PRODUCTION_SECRET');
+      expect(config['DEVELOPMENT_SECRET']).toHaveLength(8);
+      expect(config['PRODUCTION_SECRET']).toHaveLength(8);
+      expect(config['DEVELOPMENT_SECRET']).toMatch(/^[a-f0-9]{8}$/);
     });
   });
 
-  describe("Command Result Processing", () => {
-    it("should format success results", () => {
+  describe('Command Result Processing', () => {
+    it('should format success results', () => {
       const formatSuccessResult = (operation: string, details: string[]) => {
         return {
           success: true,
@@ -348,20 +347,20 @@ describe("Command Core Logic", () => {
         };
       };
 
-      const result = formatSuccessResult("Encryption", [
-        "Encrypted .env.production",
+      const result = formatSuccessResult('Encryption', [
+        'Encrypted .env.production',
       ]);
 
       expect(result.success).toBe(true);
-      expect(result.message).toBe("Encryption completed successfully");
-      expect(result.details).toEqual(["Encrypted .env.production"]);
+      expect(result.message).toBe('Encryption completed successfully');
+      expect(result.details).toEqual(['Encrypted .env.production']);
     });
 
-    it("should format error results", () => {
+    it('should format error results', () => {
       const formatErrorResult = (
         operation: string,
         error: string,
-        details?: string[],
+        details?: string[]
       ) => {
         return {
           success: false,
@@ -370,35 +369,35 @@ describe("Command Core Logic", () => {
         };
       };
 
-      const result = formatErrorResult("Decryption", "Invalid passphrase", [
-        "Check your passphrase",
+      const result = formatErrorResult('Decryption', 'Invalid passphrase', [
+        'Check your passphrase',
       ]);
 
       expect(result.success).toBe(false);
-      expect(result.message).toBe("Decryption failed: Invalid passphrase");
-      expect(result.details).toEqual(["Check your passphrase"]);
+      expect(result.message).toBe('Decryption failed: Invalid passphrase');
+      expect(result.details).toEqual(['Check your passphrase']);
     });
 
-    it("should aggregate multiple operation results", () => {
+    it('should aggregate multiple operation results', () => {
       const aggregateResults = (
-        results: Array<{ success: boolean; message: string }>,
+        results: Array<{ success: boolean; message: string }>
       ) => {
-        const successful = results.filter((r) => r.success);
-        const failed = results.filter((r) => !r.success);
+        const successful = results.filter(r => r.success);
+        const failed = results.filter(r => !r.success);
 
         return {
           totalOperations: results.length,
           successful: successful.length,
           failed: failed.length,
           overallSuccess: failed.length === 0,
-          messages: results.map((r) => r.message),
+          messages: results.map(r => r.message),
         };
       };
 
       const results = [
-        { success: true, message: "Encrypted .env.production" },
-        { success: false, message: "Failed to encrypt .env.staging" },
-        { success: true, message: "Encrypted .env.development" },
+        { success: true, message: 'Encrypted .env.production' },
+        { success: false, message: 'Failed to encrypt .env.staging' },
+        { success: true, message: 'Encrypted .env.development' },
       ];
 
       const summary = aggregateResults(results);
@@ -410,70 +409,70 @@ describe("Command Core Logic", () => {
     });
   });
 
-  describe("Path Resolution Logic", () => {
-    it("should resolve working directory", () => {
+  describe('Path Resolution Logic', () => {
+    it('should resolve working directory', () => {
       const resolveWorkingDirectory = (
         providedCwd?: string,
-        currentDir: string = "/current",
+        currentDir: string = '/current'
       ) => {
         if (providedCwd) {
           // Handle relative paths
-          if (providedCwd.startsWith("./") || providedCwd.startsWith("../")) {
-            return `${currentDir}/${providedCwd}`.replace(/\/+/g, "/");
+          if (providedCwd.startsWith('./') || providedCwd.startsWith('../')) {
+            return `${currentDir}/${providedCwd}`.replace(/\/+/g, '/');
           }
           // Handle absolute paths
-          if (providedCwd.startsWith("/")) {
+          if (providedCwd.startsWith('/')) {
             return providedCwd;
           }
           // Handle relative paths without ./
-          return `${currentDir}/${providedCwd}`.replace(/\/+/g, "/");
+          return `${currentDir}/${providedCwd}`.replace(/\/+/g, '/');
         }
 
         return currentDir;
       };
 
-      expect(resolveWorkingDirectory(undefined, "/current")).toBe("/current");
-      expect(resolveWorkingDirectory("/absolute/path", "/current")).toBe(
-        "/absolute/path",
+      expect(resolveWorkingDirectory(undefined, '/current')).toBe('/current');
+      expect(resolveWorkingDirectory('/absolute/path', '/current')).toBe(
+        '/absolute/path'
       );
-      expect(resolveWorkingDirectory("./relative", "/current")).toBe(
-        "/current/./relative",
+      expect(resolveWorkingDirectory('./relative', '/current')).toBe(
+        '/current/./relative'
       );
-      expect(resolveWorkingDirectory("relative", "/current")).toBe(
-        "/current/relative",
+      expect(resolveWorkingDirectory('relative', '/current')).toBe(
+        '/current/relative'
       );
     });
 
-    it("should build file paths correctly", () => {
+    it('should build file paths correctly', () => {
       const buildFilePath = (
         directory: string,
         environment: string,
-        encrypted: boolean = false,
+        encrypted: boolean = false
       ) => {
         const baseFile = `.env.${environment}`;
         const fileName = encrypted ? `${baseFile}.gpg` : baseFile;
-        return `${directory}/${fileName}`.replace(/\/+/g, "/");
+        return `${directory}/${fileName}`.replace(/\/+/g, '/');
       };
 
-      expect(buildFilePath("/project", "production", false)).toBe(
-        "/project/.env.production",
+      expect(buildFilePath('/project', 'production', false)).toBe(
+        '/project/.env.production'
       );
-      expect(buildFilePath("/project", "production", true)).toBe(
-        "/project/.env.production.gpg",
+      expect(buildFilePath('/project', 'production', true)).toBe(
+        '/project/.env.production.gpg'
       );
-      expect(buildFilePath("/project/", "development", false)).toBe(
-        "/project/.env.development",
+      expect(buildFilePath('/project/', 'development', false)).toBe(
+        '/project/.env.development'
       );
     });
   });
 
-  describe("Command Option Processing", () => {
-    it("should process and validate common options", () => {
+  describe('Command Option Processing', () => {
+    it('should process and validate common options', () => {
       const processCommonOptions = (options: any) => {
         const processed = {
-          environment: options.environment?.trim() || "",
+          environment: options.environment?.trim() || '',
           cwd: options.cwd?.trim() || process.cwd(),
-          passphrase: options.passphrase?.trim() || "",
+          passphrase: options.passphrase?.trim() || '',
           overwrite: !!options.overwrite,
           interactive: !!options.interactive,
         };
@@ -481,44 +480,44 @@ describe("Command Core Logic", () => {
         const errors = [];
 
         if (!processed.environment) {
-          errors.push("Environment is required");
+          errors.push('Environment is required');
         }
 
         return { processed, errors, valid: errors.length === 0 };
       };
 
-      const validOptions = { environment: "production", passphrase: "secret" };
-      const invalidOptions = { environment: "", passphrase: "secret" };
+      const validOptions = { environment: 'production', passphrase: 'secret' };
+      const invalidOptions = { environment: '', passphrase: 'secret' };
 
       expect(processCommonOptions(validOptions).valid).toBe(true);
       expect(processCommonOptions(invalidOptions).valid).toBe(false);
       expect(processCommonOptions(invalidOptions).errors).toContain(
-        "Environment is required",
+        'Environment is required'
       );
     });
 
-    it("should merge default and provided options", () => {
+    it('should merge default and provided options', () => {
       const mergeOptions = (defaults: any, provided: any) => {
         return {
           ...defaults,
           ...Object.fromEntries(
             Object.entries(provided).filter(
-              ([_, value]) => value !== undefined && value !== null,
-            ),
+              ([_, value]) => value !== undefined && value !== null
+            )
           ),
         };
       };
 
-      const defaults = { cwd: "/default", overwrite: false, secretLength: 32 };
+      const defaults = { cwd: '/default', overwrite: false, secretLength: 32 };
       const provided = {
-        cwd: "/custom",
+        cwd: '/custom',
         overwrite: true,
         secretLength: undefined,
       };
 
       const merged = mergeOptions(defaults, provided);
 
-      expect(merged.cwd).toBe("/custom");
+      expect(merged.cwd).toBe('/custom');
       expect(merged.overwrite).toBe(true);
       expect(merged.secretLength).toBe(32); // Kept default since provided was undefined
     });

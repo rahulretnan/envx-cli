@@ -7,7 +7,10 @@ export class ExecUtils {
   /**
    * Execute a shell command with proper error handling
    */
-  static exec(command: string, options: { silent?: boolean; cwd?: string } = {}): CommandResult {
+  static exec(
+    command: string,
+    options: { silent?: boolean; cwd?: string } = {}
+  ): CommandResult {
     try {
       const { silent = false, cwd } = options;
 
@@ -18,13 +21,13 @@ export class ExecUtils {
       const result = execSync(command, {
         cwd: cwd || process.cwd(),
         encoding: 'utf-8',
-        stdio: silent ? 'pipe' : 'inherit'
+        stdio: silent ? 'pipe' : 'inherit',
       });
 
       return {
         success: true,
         message: 'Command executed successfully',
-        data: result
+        data: result,
       };
     } catch (error) {
       const err = error as Error & { status?: number; stderr?: string };
@@ -32,7 +35,7 @@ export class ExecUtils {
       return {
         success: false,
         message: `Command failed: ${err.message}`,
-        errors: [err.stderr || err.message]
+        errors: [err.stderr || err.message],
       };
     }
   }
@@ -48,7 +51,11 @@ export class ExecUtils {
   /**
    * Execute GPG decrypt command
    */
-  static decryptFile(encryptedPath: string, outputPath: string, passphrase: string): CommandResult {
+  static decryptFile(
+    encryptedPath: string,
+    outputPath: string,
+    passphrase: string
+  ): CommandResult {
     const command = `gpg --passphrase "${passphrase}" --quiet --yes --batch -o "${outputPath}" -d "${encryptedPath}"`;
     return this.exec(command, { silent: true });
   }
@@ -101,13 +108,13 @@ export class ExecUtils {
       shell.cp(source, destination);
       return {
         success: true,
-        message: `File copied from ${source} to ${destination}`
+        message: `File copied from ${source} to ${destination}`,
       };
     } catch (error) {
       return {
         success: false,
         message: `Failed to copy file: ${error}`,
-        errors: [String(error)]
+        errors: [String(error)],
       };
     }
   }
@@ -120,13 +127,13 @@ export class ExecUtils {
       shell.mv(source, destination);
       return {
         success: true,
-        message: `File moved from ${source} to ${destination}`
+        message: `File moved from ${source} to ${destination}`,
       };
     } catch (error) {
       return {
         success: false,
         message: `Failed to move file: ${error}`,
-        errors: [String(error)]
+        errors: [String(error)],
       };
     }
   }
@@ -139,13 +146,13 @@ export class ExecUtils {
       shell.rm(path);
       return {
         success: true,
-        message: `File removed: ${path}`
+        message: `File removed: ${path}`,
       };
     } catch (error) {
       return {
         success: false,
         message: `Failed to remove file: ${error}`,
-        errors: [String(error)]
+        errors: [String(error)],
       };
     }
   }
@@ -171,7 +178,11 @@ export class ExecUtils {
 
       // Test decryption
       const decryptedFile = `/tmp/envx-test-decrypted-${Date.now()}.txt`;
-      const decryptResult = this.decryptFile(encryptedFile, decryptedFile, passphrase);
+      const decryptResult = this.decryptFile(
+        encryptedFile,
+        decryptedFile,
+        passphrase
+      );
 
       // Cleanup
       shell.rm('-f', testFile, encryptedFile, decryptedFile);
@@ -182,7 +193,7 @@ export class ExecUtils {
 
       return {
         success: true,
-        message: 'GPG operations test passed'
+        message: 'GPG operations test passed',
       };
     } catch (error) {
       // Cleanup on error
@@ -191,7 +202,7 @@ export class ExecUtils {
       return {
         success: false,
         message: `GPG test failed: ${error}`,
-        errors: [String(error)]
+        errors: [String(error)],
       };
     }
   }
@@ -270,18 +281,18 @@ export class CliUtils {
     });
 
     // Print header
-    const headerRow = headers.map((header, index) =>
-      header.padEnd(columnWidths[index])
-    ).join(' | ');
+    const headerRow = headers
+      .map((header, index) => header.padEnd(columnWidths[index]))
+      .join(' | ');
 
     console.log(chalk.bold(headerRow));
     console.log(columnWidths.map(width => '-'.repeat(width)).join('-|-'));
 
     // Print rows
     rows.forEach(row => {
-      const formattedRow = row.map((cell, index) =>
-        (cell || '').padEnd(columnWidths[index])
-      ).join(' | ');
+      const formattedRow = row
+        .map((cell, index) => (cell || '').padEnd(columnWidths[index]))
+        .join(' | ');
       console.log(formattedRow);
     });
   }

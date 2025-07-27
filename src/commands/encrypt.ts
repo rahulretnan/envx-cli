@@ -10,16 +10,21 @@ export const createEncryptCommand = (): Command => {
 
   command
     .description('Encrypt environment files')
-    .option('-e, --environment <env>', 'Environment name (e.g., development, staging, production)')
+    .option(
+      '-e, --environment <env>',
+      'Environment name (e.g., development, staging, production)'
+    )
     .option('-p, --passphrase <passphrase>', 'Passphrase for encryption')
     .option('-s, --secret <secret>', 'Secret key from environment variable')
     .option('-c, --cwd <path>', 'Working directory path')
     .option('-i, --interactive', 'Interactive mode for selecting files')
-    .action(async (options) => {
+    .action(async options => {
       try {
         await executeEncrypt(options);
       } catch (error) {
-        CliUtils.error(`Encryption failed: ${error instanceof Error ? error.message : String(error)}`);
+        CliUtils.error(
+          `Encryption failed: ${error instanceof Error ? error.message : String(error)}`
+        );
         process.exit(1);
       }
     });
@@ -35,7 +40,9 @@ async function executeEncrypt(rawOptions: any): Promise<void> {
 
   // Check prerequisites
   if (!ExecUtils.isGpgAvailable()) {
-    CliUtils.error('GPG is not available. Please install GPG to use encryption features.');
+    CliUtils.error(
+      'GPG is not available. Please install GPG to use encryption features.'
+    );
     InteractiveUtils.displayPrerequisites();
     process.exit(1);
   }
@@ -45,7 +52,9 @@ async function executeEncrypt(rawOptions: any): Promise<void> {
 
   if (availableEnvironments.length === 0) {
     CliUtils.warning('No environment files found in the current directory.');
-    CliUtils.info('Use the "create" command to create environment files first.');
+    CliUtils.info(
+      'Use the "create" command to create environment files first.'
+    );
     return;
   }
 
@@ -56,7 +65,9 @@ async function executeEncrypt(rawOptions: any): Promise<void> {
   if (!environment) {
     if (availableEnvironments.length === 1) {
       environment = availableEnvironments[0];
-      CliUtils.info(`Using environment: ${CliUtils.formatEnvironment(environment)}`);
+      CliUtils.info(
+        `Using environment: ${CliUtils.formatEnvironment(environment)}`
+      );
     } else {
       environment = await InteractiveUtils.selectEnvironment(
         availableEnvironments,
@@ -67,7 +78,9 @@ async function executeEncrypt(rawOptions: any): Promise<void> {
 
   // Validate environment exists
   if (!availableEnvironments.includes(environment)) {
-    throw new Error(`Environment '${environment}' not found. Available: ${availableEnvironments.join(', ')}`);
+    throw new Error(
+      `Environment '${environment}' not found. Available: ${availableEnvironments.join(', ')}`
+    );
   }
 
   // Get passphrase
@@ -78,12 +91,16 @@ async function executeEncrypt(rawOptions: any): Promise<void> {
 
     if (rawOptions.secret && envrcConfig[rawOptions.secret]) {
       passphrase = envrcConfig[rawOptions.secret];
-      CliUtils.info(`Using secret from .envrc: ${chalk.cyan(rawOptions.secret)}`);
+      CliUtils.info(
+        `Using secret from .envrc: ${chalk.cyan(rawOptions.secret)}`
+      );
     } else if (envrcConfig[secretVar]) {
       passphrase = envrcConfig[secretVar];
       CliUtils.info(`Using secret from .envrc: ${chalk.cyan(secretVar)}`);
     } else {
-      passphrase = await InteractiveUtils.promptPassphrase('Enter encryption passphrase:');
+      passphrase = await InteractiveUtils.promptPassphrase(
+        'Enter encryption passphrase:'
+      );
     }
   }
 
@@ -92,7 +109,7 @@ async function executeEncrypt(rawOptions: any): Promise<void> {
     environment,
     passphrase,
     cwd,
-    secret: rawOptions.secret
+    secret: rawOptions.secret,
   });
 
   // Test GPG operation
@@ -105,10 +122,14 @@ async function executeEncrypt(rawOptions: any): Promise<void> {
 
   // Find environment files
   const envFiles = await FileUtils.findEnvFiles(environment, cwd);
-  const unencryptedFiles = envFiles.filter(file => !file.encrypted && file.exists);
+  const unencryptedFiles = envFiles.filter(
+    file => !file.encrypted && file.exists
+  );
 
   if (unencryptedFiles.length === 0) {
-    CliUtils.warning(`No unencrypted .env.${environment} files found to encrypt.`);
+    CliUtils.warning(
+      `No unencrypted .env.${environment} files found to encrypt.`
+    );
     return;
   }
 
@@ -165,10 +186,17 @@ async function executeEncrypt(rawOptions: any): Promise<void> {
         const tempDecryptedPath = `${envFile.path}.temp.${Date.now()}`;
 
         try {
-          const decryptResult = ExecUtils.decryptFile(encryptedPath, tempDecryptedPath, passphrase);
+          const decryptResult = ExecUtils.decryptFile(
+            encryptedPath,
+            tempDecryptedPath,
+            passphrase
+          );
 
           if (decryptResult.success) {
-            const filesIdentical = await FileUtils.filesAreIdentical(envFile.path, tempDecryptedPath);
+            const filesIdentical = await FileUtils.filesAreIdentical(
+              envFile.path,
+              tempDecryptedPath
+            );
 
             // Cleanup temp file
             if (await FileUtils.fileExists(tempDecryptedPath)) {
@@ -176,21 +204,27 @@ async function executeEncrypt(rawOptions: any): Promise<void> {
             }
 
             if (filesIdentical) {
-              CliUtils.success('File already encrypted with same content - skipping');
+              CliUtils.success(
+                'File already encrypted with same content - skipping'
+              );
               successCount++;
               continue;
             } else {
               CliUtils.warning('File has changes - updating encrypted version');
             }
           } else {
-            CliUtils.warning('Could not decrypt existing file - creating new encrypted version');
+            CliUtils.warning(
+              'Could not decrypt existing file - creating new encrypted version'
+            );
           }
         } catch (error) {
           // Cleanup temp file on error
           if (await FileUtils.fileExists(tempDecryptedPath)) {
             ExecUtils.removeFile(tempDecryptedPath);
           }
-          CliUtils.warning('Error comparing with existing encrypted file - proceeding with encryption');
+          CliUtils.warning(
+            'Error comparing with existing encrypted file - proceeding with encryption'
+          );
         }
       }
 
@@ -199,7 +233,7 @@ async function executeEncrypt(rawOptions: any): Promise<void> {
 
       if (encryptResult.success) {
         CliUtils.success(`Encrypted: ${chalk.cyan(relativePath)}`);
-        CliUtils.info(`Created: ${chalk.cyan(relativePath + '.gpg')}`);
+        CliUtils.info(`Created: ${chalk.cyan(`${relativePath}.gpg`)}`);
         successCount++;
       } else {
         CliUtils.error(`Failed to encrypt: ${encryptResult.message}`);
@@ -210,9 +244,10 @@ async function executeEncrypt(rawOptions: any): Promise<void> {
         }
         errorCount++;
       }
-
     } catch (error) {
-      CliUtils.error(`Error processing ${relativePath}: ${error instanceof Error ? error.message : String(error)}`);
+      CliUtils.error(
+        `Error processing ${relativePath}: ${error instanceof Error ? error.message : String(error)}`
+      );
       errorCount++;
     }
   }
@@ -235,7 +270,9 @@ async function executeEncrypt(rawOptions: any): Promise<void> {
     CliUtils.info('Next steps:');
     console.log(chalk.gray('• Add *.gpg files to your version control'));
     console.log(chalk.gray('• Consider adding .env.* files to .gitignore'));
-    console.log(chalk.gray('• Use "envx decrypt" to decrypt files when needed'));
+    console.log(
+      chalk.gray('• Use "envx decrypt" to decrypt files when needed')
+    );
   }
 
   if (errorCount > 0) {

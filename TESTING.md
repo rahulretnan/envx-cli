@@ -27,6 +27,7 @@ These tests verify the CLI works as a complete system:
 ### What We Test
 
 ✅ **Core Business Logic**
+
 - Command input validation
 - File path manipulation
 - Environment name validation
@@ -34,12 +35,14 @@ These tests verify the CLI works as a complete system:
 - Command workflow patterns
 
 ✅ **Essential CLI Functionality**
+
 - Help and version commands
 - Basic create command functionality
 - Error handling for invalid inputs
 - File overwrite protection
 
 ✅ **Critical Edge Cases**
+
 - Invalid environment names
 - Path edge cases (empty paths, Windows paths, etc.)
 - Input validation boundaries
@@ -47,16 +50,19 @@ These tests verify the CLI works as a complete system:
 ### What We Don't Test
 
 ❌ **UI/Cosmetic Features**
+
 - Chalk color formatting
 - Inquirer prompt styling
 - Console output formatting
 
 ❌ **Complex External Dependencies**
+
 - GPG integration details (beyond availability checks)
 - File system permissions (beyond basic checks)
 - Network operations
 
 ❌ **Implementation Details**
+
 - Internal module structure
 - Private methods
 - Specific ESM/CommonJS compatibility
@@ -90,11 +96,13 @@ npm run test:watch
 ## Coverage Goals
 
 We aim for:
+
 - **High coverage** of core utility functions (schemas, file utils)
 - **Functional coverage** of CLI commands (basic operations work)
 - **Scenario coverage** of common user workflows
 
 We don't aim for:
+
 - 100% line coverage
 - Coverage of error messages and UI formatting
 - Coverage of rarely-used edge cases

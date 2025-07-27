@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.0.0] - 2025-07-27
 
 ### Added
+
 - Initial release of EnvX CLI tool
 - GPG-based encryption and decryption of environment files
 - Stage-based environment management (development, staging, production, etc.)
@@ -20,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Integration with direnv for automatic environment loading
 
 ### Features
+
 - `envx init` - Initialize EnvX in a new project
 - `envx create` - Create new environment files with optional templates
 - `envx encrypt` - Encrypt environment files using GPG
@@ -30,6 +32,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `envx version` - Show version information
 
 ### Security
+
 - GPG encryption for maximum security
 - Secret management with `.envrc` integration
 - Automatic secret variable naming (`<STAGE>_SECRET`)
@@ -37,6 +40,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Secure file permission handling
 
 ### Developer Experience
+
 - TypeScript support with full type safety
 - Zod schema validation for all inputs
 - Interactive prompts with validation
@@ -45,6 +49,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Progress indicators for long operations
 
 ### Documentation
+
 - Complete README with installation and usage instructions
 - Security best practices guide
 - Troubleshooting section

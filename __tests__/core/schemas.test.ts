@@ -1,8 +1,8 @@
 import {
-    validateCreateOptions,
-    validateDecryptOptions,
-    validateEncryptOptions,
-    validateInteractiveOptions,
+  validateCreateOptions,
+  validateDecryptOptions,
+  validateEncryptOptions,
+  validateInteractiveOptions,
 } from '../../src/schemas';
 
 describe('Schema Validation Core', () => {
@@ -11,7 +11,7 @@ describe('Schema Validation Core', () => {
       const options = {
         environment: 'production',
         passphrase: 'test-passphrase',
-        cwd: '/test/path'
+        cwd: '/test/path',
       };
 
       const result = validateEncryptOptions(options);
@@ -21,7 +21,7 @@ describe('Schema Validation Core', () => {
     it('should require environment', () => {
       expect(() => {
         validateEncryptOptions({
-          passphrase: 'test-passphrase'
+          passphrase: 'test-passphrase',
         });
       }).toThrow(/environment.*required/i);
     });
@@ -29,7 +29,7 @@ describe('Schema Validation Core', () => {
     it('should require passphrase', () => {
       expect(() => {
         validateEncryptOptions({
-          environment: 'production'
+          environment: 'production',
         });
       }).toThrow(/passphrase.*required/i);
     });
@@ -38,7 +38,7 @@ describe('Schema Validation Core', () => {
       expect(() => {
         validateEncryptOptions({
           environment: '',
-          passphrase: 'test-passphrase'
+          passphrase: 'test-passphrase',
         });
       }).toThrow();
     });
@@ -48,7 +48,7 @@ describe('Schema Validation Core', () => {
         environment: 'test',
         passphrase: 'test-pass',
         cwd: '/custom/path',
-        secret: 'CUSTOM_SECRET'
+        secret: 'CUSTOM_SECRET',
       };
 
       const result = validateEncryptOptions(options);
@@ -61,7 +61,7 @@ describe('Schema Validation Core', () => {
     it('should validate correct decrypt options', () => {
       const options = {
         environment: 'production',
-        passphrase: 'test-passphrase'
+        passphrase: 'test-passphrase',
       };
 
       const result = validateDecryptOptions(options);
@@ -71,7 +71,7 @@ describe('Schema Validation Core', () => {
     it('should require environment', () => {
       expect(() => {
         validateDecryptOptions({
-          passphrase: 'test-passphrase'
+          passphrase: 'test-passphrase',
         });
       }).toThrow(/environment.*required/i);
     });
@@ -79,7 +79,7 @@ describe('Schema Validation Core', () => {
     it('should require passphrase', () => {
       expect(() => {
         validateDecryptOptions({
-          environment: 'production'
+          environment: 'production',
         });
       }).toThrow(/passphrase.*required/i);
     });
@@ -88,7 +88,7 @@ describe('Schema Validation Core', () => {
       const options = {
         environment: 'production',
         passphrase: 'secure-pass',
-        cwd: '/project/path'
+        cwd: '/project/path',
       };
 
       const result = validateDecryptOptions(options);
@@ -100,7 +100,7 @@ describe('Schema Validation Core', () => {
     it('should validate correct create options', () => {
       const options = {
         environment: 'development',
-        cwd: '/test/path'
+        cwd: '/test/path',
       };
 
       const result = validateCreateOptions(options);
@@ -110,7 +110,7 @@ describe('Schema Validation Core', () => {
     it('should require environment', () => {
       expect(() => {
         validateCreateOptions({
-          cwd: '/test/path'
+          cwd: '/test/path',
         });
       }).toThrow(/environment.*required/i);
     });
@@ -119,7 +119,7 @@ describe('Schema Validation Core', () => {
       expect(() => {
         validateCreateOptions({
           environment: '',
-          cwd: '/test/path'
+          cwd: '/test/path',
         });
       }).toThrow();
     });
@@ -128,7 +128,7 @@ describe('Schema Validation Core', () => {
       const options = {
         environment: 'staging',
         template: '.env.example',
-        cwd: '/test/path'
+        cwd: '/test/path',
       };
 
       const result = validateCreateOptions(options);
@@ -137,7 +137,7 @@ describe('Schema Validation Core', () => {
 
     it('should work with minimal options', () => {
       const options = {
-        environment: 'development'
+        environment: 'development',
       };
 
       const result = validateCreateOptions(options);
@@ -168,7 +168,7 @@ describe('Schema Validation Core', () => {
     it('should handle all options together', () => {
       const options = {
         cwd: '/test/path',
-        overwrite: false
+        overwrite: false,
       };
 
       const result = validateInteractiveOptions(options);
@@ -180,7 +180,7 @@ describe('Schema Validation Core', () => {
     it('should handle special characters in environment names', () => {
       const options = {
         environment: 'test-env_123',
-        passphrase: 'pass'
+        passphrase: 'pass',
       };
 
       const result = validateEncryptOptions(options);
@@ -190,7 +190,7 @@ describe('Schema Validation Core', () => {
     it('should handle special characters in passphrases', () => {
       const options = {
         environment: 'test',
-        passphrase: 'p@ssw0rd!#$%^&*()'
+        passphrase: 'p@ssw0rd!#$%^&*()',
       };
 
       const result = validateEncryptOptions(options);
@@ -201,7 +201,7 @@ describe('Schema Validation Core', () => {
       const options = {
         environment: 'test',
         passphrase: 'pass',
-        cwd: '/path with spaces/project'
+        cwd: '/path with spaces/project',
       };
 
       const result = validateEncryptOptions(options);
@@ -212,7 +212,7 @@ describe('Schema Validation Core', () => {
       expect(() => {
         validateEncryptOptions({
           environment: 123,
-          passphrase: 'pass'
+          passphrase: 'pass',
         } as any);
       }).toThrow();
     });
@@ -221,7 +221,7 @@ describe('Schema Validation Core', () => {
       expect(() => {
         validateEncryptOptions({
           environment: 'test',
-          passphrase: true
+          passphrase: true,
         } as any);
       }).toThrow();
     });

@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z } from 'zod';
 
 export const baseOptionsSchema = z.object({
   cwd: z.string().optional(),
@@ -11,21 +11,21 @@ export const baseOptionsSchema = z.object({
 });
 
 export const encryptSchema = z.object({
-  environment: z.string().min(1, "Environment is required"),
-  passphrase: z.string().min(1, "Passphrase is required"),
+  environment: z.string().min(1, 'Environment is required'),
+  passphrase: z.string().min(1, 'Passphrase is required'),
   cwd: z.string().optional(),
   secret: z.string().optional(),
 });
 
 export const decryptSchema = z.object({
-  environment: z.string().min(1, "Environment is required"),
-  passphrase: z.string().min(1, "Passphrase is required"),
+  environment: z.string().min(1, 'Environment is required'),
+  passphrase: z.string().min(1, 'Passphrase is required'),
   cwd: z.string().optional(),
   secret: z.string().optional(),
 });
 
 export const createSchema = z.object({
-  environment: z.string().min(1, "Environment is required"),
+  environment: z.string().min(1, 'Environment is required'),
   template: z.string().optional(),
   cwd: z.string().optional(),
 });
@@ -36,9 +36,9 @@ export const interactiveSchema = z.object({
 });
 
 export const stageSecretSchema = z.object({
-  stage: z.string().min(1, "Stage is required"),
-  secret: z.string().min(1, "Secret is required"),
-  variableName: z.string().min(1, "Variable name is required"),
+  stage: z.string().min(1, 'Stage is required'),
+  secret: z.string().min(1, 'Secret is required'),
+  variableName: z.string().min(1, 'Variable name is required'),
 });
 
 export const envrcConfigSchema = z.record(z.string(), z.string());
@@ -73,9 +73,9 @@ export const validateSchema = <T>(schema: z.ZodSchema<T>, data: unknown): T => {
   } catch (error) {
     if (error instanceof z.ZodError) {
       const errorMessages = error.issues.map(
-        (err: any) => `${err.path.join(".")}: ${err.message}`,
+        (err: any) => `${err.path.join('.')}: ${err.message}`
       );
-      throw new Error(`Validation failed:\n${errorMessages.join("\n")}`);
+      throw new Error(`Validation failed:\n${errorMessages.join('\n')}`);
     }
     throw error;
   }

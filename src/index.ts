@@ -6,7 +6,10 @@ import path from 'path';
 import { createCreateCommand } from './commands/create';
 import { createDecryptCommand } from './commands/decrypt';
 import { createEncryptCommand } from './commands/encrypt';
-import { createInteractiveCommand, showQuickStart } from './commands/interactive';
+import {
+  createInteractiveCommand,
+  showQuickStart,
+} from './commands/interactive';
 import { CliUtils, ExecUtils } from './utils/exec';
 import { FileUtils } from './utils/file';
 import { InteractiveUtils } from './utils/interactive';
@@ -23,7 +26,7 @@ async function createProgram(): Promise<Command> {
     .version(packageJson.version)
     .option('-v, --verbose', 'Enable verbose output')
     .option('-q, --quiet', 'Suppress non-error output')
-    .hook('preAction', async (thisCommand) => {
+    .hook('preAction', async thisCommand => {
       // Global setup
       const options = thisCommand.opts();
 
@@ -52,11 +55,13 @@ async function createProgram(): Promise<Command> {
     .alias('ls')
     .description('List all environment files and their status')
     .option('-c, --cwd <path>', 'Working directory path')
-    .action(async (options) => {
+    .action(async options => {
       try {
         await executeList(options);
       } catch (error) {
-        CliUtils.error(`List failed: ${error instanceof Error ? error.message : String(error)}`);
+        CliUtils.error(
+          `List failed: ${error instanceof Error ? error.message : String(error)}`
+        );
         process.exit(1);
       }
     });
@@ -66,11 +71,13 @@ async function createProgram(): Promise<Command> {
     .command('status')
     .description('Show project encryption status and recommendations')
     .option('-c, --cwd <path>', 'Working directory path')
-    .action(async (options) => {
+    .action(async options => {
       try {
         await executeStatus(options);
       } catch (error) {
-        CliUtils.error(`Status check failed: ${error instanceof Error ? error.message : String(error)}`);
+        CliUtils.error(
+          `Status check failed: ${error instanceof Error ? error.message : String(error)}`
+        );
         process.exit(1);
       }
     });
@@ -80,11 +87,13 @@ async function createProgram(): Promise<Command> {
     .command('init')
     .description('Initialize EnvX in a new project')
     .option('-c, --cwd <path>', 'Working directory path')
-    .action(async (options) => {
+    .action(async options => {
       try {
         await executeInit(options);
       } catch (error) {
-        CliUtils.error(`Initialization failed: ${error instanceof Error ? error.message : String(error)}`);
+        CliUtils.error(
+          `Initialization failed: ${error instanceof Error ? error.message : String(error)}`
+        );
         process.exit(1);
       }
     });
@@ -97,10 +106,14 @@ async function createProgram(): Promise<Command> {
       console.log();
       console.log(chalk.bold.cyan('🔐 EnvX'));
       console.log(`Version: ${chalk.green(packageJson.version)}`);
-      console.log(`Description: ${packageJson.description || 'Environment file encryption and management tool'}`);
+      console.log(
+        `Description: ${packageJson.description || 'Environment file encryption and management tool'}`
+      );
       console.log();
       console.log('Dependencies:');
-      console.log(`• GPG: ${ExecUtils.isGpgAvailable() ? chalk.green('Available') : chalk.red('Not found')}`);
+      console.log(
+        `• GPG: ${ExecUtils.isGpgAvailable() ? chalk.green('Available') : chalk.red('Not found')}`
+      );
       console.log(`• Node.js: ${chalk.green(process.version)}`);
       console.log();
     });
@@ -135,26 +148,33 @@ async function executeList(options: any): Promise<void> {
         : file.path;
 
       const relativePath = FileUtils.getRelativePath(displayPath, cwd);
-      const status = file.encrypted ? chalk.green('Encrypted') : chalk.yellow('Unencrypted');
+      const status = file.encrypted
+        ? chalk.green('Encrypted')
+        : chalk.yellow('Unencrypted');
       const type = file.encrypted ? '.gpg' : '.env';
 
       tableRows.push([
         CliUtils.formatEnvironment(env),
         chalk.cyan(relativePath),
         type,
-        status
+        status,
       ]);
     }
   }
 
   if (tableRows.length > 0) {
-    CliUtils.printTable(['Environment', 'File Path', 'Type', 'Status'], tableRows);
+    CliUtils.printTable(
+      ['Environment', 'File Path', 'Type', 'Status'],
+      tableRows
+    );
   }
 
   // Show .envrc status
   console.log();
   const envrcExists = await FileUtils.fileExists(path.join(cwd, '.envrc'));
-  CliUtils.info(`Secrets file (.envrc): ${envrcExists ? chalk.green('Present') : chalk.yellow('Not found')}`);
+  CliUtils.info(
+    `Secrets file (.envrc): ${envrcExists ? chalk.green('Present') : chalk.yellow('Not found')}`
+  );
 
   if (!envrcExists) {
     console.log(chalk.gray('  Use "envx interactive" to set up secrets'));
@@ -168,7 +188,9 @@ async function executeStatus(options: any): Promise<void> {
 
   // Check prerequisites
   CliUtils.subheader('Prerequisites');
-  console.log(`GPG: ${ExecUtils.isGpgAvailable() ? chalk.green('✓ Available') : chalk.red('✗ Not found')}`);
+  console.log(
+    `GPG: ${ExecUtils.isGpgAvailable() ? chalk.green('✓ Available') : chalk.red('✗ Not found')}`
+  );
 
   if (!ExecUtils.isGpgAvailable()) {
     InteractiveUtils.displayPrerequisites();
@@ -211,12 +233,16 @@ async function executeStatus(options: any): Promise<void> {
   console.log(`Total environments: ${chalk.cyan(environments.length)}`);
   console.log(`Total files: ${chalk.cyan(totalFiles)}`);
   console.log(`Encrypted: ${chalk.green(encryptedFiles)}`);
-  console.log(`Unencrypted: ${unencryptedFiles > 0 ? chalk.yellow(unencryptedFiles) : chalk.gray(unencryptedFiles)}`);
+  console.log(
+    `Unencrypted: ${unencryptedFiles > 0 ? chalk.yellow(unencryptedFiles) : chalk.gray(unencryptedFiles)}`
+  );
 
   // Secrets status
   console.log();
   const envrcExists = await FileUtils.fileExists(path.join(cwd, '.envrc'));
-  console.log(`Secrets file (.envrc): ${envrcExists ? chalk.green('✓ Present') : chalk.yellow('✗ Missing')}`);
+  console.log(
+    `Secrets file (.envrc): ${envrcExists ? chalk.green('✓ Present') : chalk.yellow('✗ Missing')}`
+  );
 
   if (!envrcExists) {
     recommendations.push('Set up .envrc file with "envx interactive"');
@@ -252,7 +278,9 @@ async function executeInit(options: any): Promise<void> {
     CliUtils.warning('EnvX appears to already be set up in this project.');
 
     if (existingEnvironments.length > 0) {
-      console.log(`Found environments: ${existingEnvironments.map(env => CliUtils.formatEnvironment(env)).join(', ')}`);
+      console.log(
+        `Found environments: ${existingEnvironments.map(env => CliUtils.formatEnvironment(env)).join(', ')}`
+      );
     }
 
     if (envrcExists) {
@@ -303,7 +331,7 @@ async function executeInit(options: any): Promise<void> {
 }
 
 // Error handling
-process.on('uncaughtException', (error) => {
+process.on('uncaughtException', error => {
   CliUtils.error(`Uncaught error: ${error.message}`);
   if (process.env.NODE_ENV === 'development') {
     console.error(error.stack);
@@ -329,7 +357,9 @@ async function main() {
 
     await program.parseAsync(process.argv);
   } catch (error) {
-    CliUtils.error(`Command failed: ${error instanceof Error ? error.message : String(error)}`);
+    CliUtils.error(
+      `Command failed: ${error instanceof Error ? error.message : String(error)}`
+    );
     process.exit(1);
   }
 }
