@@ -1,21 +1,24 @@
-import crypto from 'crypto';
-import fastGlob from 'fast-glob';
-import fs from 'fs-extra';
-import { replace } from 'lodash';
-import path from 'path';
-import { EnvFile, EnvrcConfig, FileOperationResult } from '../types';
+import crypto from "crypto";
+import fastGlob from "fast-glob";
+import fs from "fs-extra";
+import { replace } from "lodash";
+import path from "path";
+import { EnvFile, EnvrcConfig, FileOperationResult } from "../types";
 
 export class FileUtils {
   /**
    * Find all .env files for a specific environment
    */
-  static async findEnvFiles(environment: string, cwd: string): Promise<EnvFile[]> {
+  static async findEnvFiles(
+    environment: string,
+    cwd: string,
+  ): Promise<EnvFile[]> {
     const pattern = `**/.env.${environment}`;
     const encryptedPattern = `**/.env.${environment}.gpg`;
 
     const [envFiles, encryptedFiles] = await Promise.all([
       fastGlob(pattern, { cwd, dot: true }),
-      fastGlob(encryptedPattern, { cwd, dot: true })
+      fastGlob(encryptedPattern, { cwd, dot: true }),
     ]);
 
     const results: EnvFile[] = [];
@@ -26,18 +29,18 @@ export class FileUtils {
         path: path.join(cwd, filePath),
         stage: environment,
         encrypted: false,
-        exists: true
+        exists: true,
       });
     }
 
     // Add encrypted env files
     for (const filePath of encryptedFiles) {
-      const decryptedPath = replace(filePath, '.gpg', '');
+      const decryptedPath = replace(filePath, ".gpg", "");
       results.push({
         path: path.join(cwd, decryptedPath),
         stage: environment,
         encrypted: true,
-        exists: true
+        exists: true,
       });
     }
 
@@ -48,7 +51,7 @@ export class FileUtils {
    * Find all environments in the project
    */
   static async findAllEnvironments(cwd: string): Promise<string[]> {
-    const pattern = '**/.env.*';
+    const pattern = "**/.env.*";
     const files = await fastGlob(pattern, { cwd, dot: true });
 
     const environments = new Set<string>();
@@ -69,8 +72,8 @@ export class FileUtils {
    */
   static async fileExists(filePath: string): Promise<boolean> {
     try {
-      await fs.access(filePath);
-      return true;
+      const stat = await fs.stat(filePath);
+      return stat.isFile();
     } catch {
       return false;
     }
@@ -80,7 +83,9 @@ export class FileUtils {
    * Create backup of a file
    */
   static async createBackup(filePath: string): Promise<string> {
-    const backupPath = `${filePath}.backup.${Date.now()}`;
+    const timestamp = Date.now();
+    const random = Math.random().toString(36).substring(2, 8);
+    const backupPath = `${filePath}.backup.${timestamp}.${random}`;
     await fs.copy(filePath, backupPath);
     return backupPath;
   }
@@ -99,20 +104,23 @@ export class FileUtils {
    */
   static async getFileHash(filePath: string): Promise<string> {
     const fileBuffer = await fs.readFile(filePath);
-    return crypto.createHash('md5').update(fileBuffer).digest('hex');
+    return crypto.createHash("md5").update(fileBuffer).digest("hex");
   }
 
   /**
    * Compare two files by hash
    */
-  static async filesAreIdentical(file1: string, file2: string): Promise<boolean> {
+  static async filesAreIdentical(
+    file1: string,
+    file2: string,
+  ): Promise<boolean> {
     if (!(await this.fileExists(file1)) || !(await this.fileExists(file2))) {
       return false;
     }
 
     const [hash1, hash2] = await Promise.all([
       this.getFileHash(file1),
-      this.getFileHash(file2)
+      this.getFileHash(file2),
     ]);
 
     return hash1 === hash2;
@@ -122,27 +130,27 @@ export class FileUtils {
    * Read .envrc file and parse it
    */
   static async readEnvrc(cwd: string): Promise<EnvrcConfig> {
-    const envrcPath = path.join(cwd, '.envrc');
+    const envrcPath = path.join(cwd, ".envrc");
 
     if (!(await this.fileExists(envrcPath))) {
       return {};
     }
 
     try {
-      const content = await fs.readFile(envrcPath, 'utf-8');
+      const content = await fs.readFile(envrcPath, "utf-8");
       const config: EnvrcConfig = {};
 
       // Parse simple export statements
-      const lines = content.split('\n');
+      const lines = content.split("\n");
       for (const line of lines) {
         const trimmed = line.trim();
-        if (trimmed.startsWith('export ')) {
+        if (trimmed.startsWith("export ")) {
           const exportStatement = trimmed.substring(7);
-          const [key, ...valueParts] = exportStatement.split('=');
+          const [key, ...valueParts] = exportStatement.split("=");
           if (key && valueParts.length > 0) {
-            let value = valueParts.join('=');
+            let value = valueParts.join("=");
             // Remove quotes if present
-            value = value.replace(/^["']|["']$/g, '');
+            value = value.replace(/^["']|["']$/g, "");
             config[key.trim()] = value;
           }
         }
@@ -158,31 +166,34 @@ export class FileUtils {
   /**
    * Write .envrc file
    */
-  static async writeEnvrc(cwd: string, config: EnvrcConfig): Promise<FileOperationResult> {
-    const envrcPath = path.join(cwd, '.envrc');
+  static async writeEnvrc(
+    cwd: string,
+    config: EnvrcConfig,
+  ): Promise<FileOperationResult> {
+    const envrcPath = path.join(cwd, ".envrc");
 
     try {
-      const lines = ['# Environment secrets generated by envx', ''];
+      const lines = ["# Environment secrets generated by envx", ""];
 
       for (const [key, value] of Object.entries(config)) {
         lines.push(`export ${key}="${value}"`);
       }
 
-      lines.push(''); // End with newline
+      lines.push(""); // End with newline
 
-      await fs.writeFile(envrcPath, lines.join('\n'), 'utf-8');
+      await fs.writeFile(envrcPath, lines.join("\n"), "utf-8");
 
       return {
         success: true,
-        message: 'Successfully wrote .envrc file',
-        filePath: envrcPath
+        message: "Successfully wrote .envrc file",
+        filePath: envrcPath,
       };
     } catch (error) {
       return {
         success: false,
         message: `Failed to write .envrc file: ${error}`,
         filePath: envrcPath,
-        error: error as Error
+        error: error as Error,
       };
     }
   }
@@ -190,40 +201,43 @@ export class FileUtils {
   /**
    * Create a template .env file
    */
-  static async createEnvTemplate(filePath: string, template?: string): Promise<FileOperationResult> {
+  static async createEnvTemplate(
+    filePath: string,
+    template?: string,
+  ): Promise<FileOperationResult> {
     try {
-      let content = '';
+      let content = "";
 
-      if (template && await this.fileExists(template)) {
+      if (template && (await this.fileExists(template))) {
         // Use provided template file
-        content = await fs.readFile(template, 'utf-8');
+        content = await fs.readFile(template, "utf-8");
       } else {
         // Create basic template
         content = [
-          '# Environment variables',
-          '# Add your environment-specific variables here',
-          '',
-          '# Example:',
-          '# DATABASE_URL=',
-          '# API_KEY=',
-          '# DEBUG=false',
-          ''
-        ].join('\n');
+          "# Environment variables",
+          "# Add your environment-specific variables here",
+          "",
+          "# Example:",
+          "# DATABASE_URL=",
+          "# API_KEY=",
+          "# DEBUG=false",
+          "",
+        ].join("\n");
       }
 
-      await fs.writeFile(filePath, content, 'utf-8');
+      await fs.writeFile(filePath, content, "utf-8");
 
       return {
         success: true,
         message: `Successfully created .env file`,
-        filePath
+        filePath,
       };
     } catch (error) {
       return {
         success: false,
         message: `Failed to create .env file: ${error}`,
         filePath,
-        error: error as Error
+        error: error as Error,
       };
     }
   }
@@ -232,7 +246,7 @@ export class FileUtils {
    * Generate a random secret
    */
   static generateRandomSecret(length: number = 32): string {
-    return crypto.randomBytes(length).toString('hex');
+    return crypto.randomBytes(length).toString("hex");
   }
 
   /**
@@ -275,13 +289,13 @@ export class FileUtils {
    * Get decrypted file path
    */
   static getDecryptedPath(encryptedPath: string): string {
-    return replace(encryptedPath, '.gpg', '');
+    return replace(encryptedPath, ".gpg", "");
   }
 
   /**
    * Check if path is encrypted file
    */
   static isEncryptedFile(filePath: string): boolean {
-    return filePath.endsWith('.gpg');
+    return filePath.endsWith(".gpg");
   }
 }

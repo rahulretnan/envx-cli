@@ -425,22 +425,91 @@ EnvX respects the following environment variables:
 - `3` - File operation failed
 - `4` - GPG operation failed
 
+## Testing
+
+EnvX includes a streamlined test suite focused on essential functionality and real-world CLI usage scenarios.
+
+### Running Tests
+
+```bash
+# Run all tests
+npm test
+
+# Run core functionality tests
+npm run test:core
+
+# Run integration tests
+npm run test:integration
+
+# Run tests with coverage
+npm run test:coverage
+
+# Run tests in watch mode (for development)
+npm run test:watch
+```
+
+### Testing Philosophy
+
+The test suite prioritizes **essential functionality** over comprehensive coverage:
+
+- ✅ **Core business logic** - Command validation, file utilities, path manipulation
+- ✅ **Real CLI scenarios** - Actual command execution in various environments
+- ✅ **Critical workflows** - User-facing functionality that must work reliably
+- ❌ **UI/cosmetic features** - Colors, formatting, and visual elements
+- ❌ **Complex mocking** - Simplified approach focusing on actual behavior
+
+### Test Coverage
+
+**Current Status**: ✅ 95 tests passing, ~7s execution time
+
+- **Core Tests**: 82 tests covering essential functionality
+  - Schema validation: 25 tests (command input validation)
+  - File utilities: 39 tests (path manipulation, secret generation)
+  - Command logic: 18 tests (workflow patterns and decision logic)
+
+- **Integration Tests**: 13 tests covering real CLI usage
+  - Help/version commands
+  - Create command functionality
+  - Error handling scenarios
+  - Environment validation
+
+### Test Structure
+
+```
+__tests__/
+├── core/                    # Essential functionality tests
+│   ├── schemas.test.ts     # Input validation for all commands
+│   ├── file.test.ts        # File utilities and path manipulation
+│   └── commands.test.ts    # Command workflow logic patterns
+└── integration/            # End-to-end CLI tests
+    └── cli.test.ts         # Real CLI execution scenarios
+```
+
+For detailed testing information, see [TESTING.md](TESTING.md).
+
 ## Development
 
 ### Building from Source
 
 ```bash
-git clone https://github.com/rahulretnan/envx
+git clone https://github.com/your-org/envx
 cd envx
 npm install
 npm run build
 npm link
 ```
 
-### Running Tests
+### Development Workflow
 
 ```bash
-npm test
+# Start development mode
+npm run dev
+
+# Run tests in watch mode
+npm run test:watch
+
+# Build and test
+npm run build && npm test
 ```
 
 ### Contributing
@@ -449,7 +518,16 @@ npm test
 2. Create a feature branch: `git checkout -b feature-name`
 3. Make your changes and add tests
 4. Run tests: `npm test`
-5. Submit a pull request
+5. Ensure test coverage remains high: `npm run test:coverage`
+6. Submit a pull request
+
+#### Test Requirements
+
+- New CLI commands must include integration tests
+- Core utility functions must include unit tests
+- Focus on user-facing functionality over implementation details
+- Keep tests simple and maintainable
+- Ensure tests verify real CLI behavior
 
 ## Changelog
 
