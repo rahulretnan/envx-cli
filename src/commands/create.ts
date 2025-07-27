@@ -80,10 +80,11 @@ async function executeCreate(rawOptions: any): Promise<void> {
   }
 
   // Validate options
-  const options = validateCreateOptions({
+  validateCreateOptions({
     environment,
     template,
     cwd,
+    overwrite: rawOptions.overwrite,
   });
 
   // Check if environment already exists

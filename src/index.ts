@@ -15,7 +15,7 @@ import { FileUtils } from './utils/file';
 import { InteractiveUtils } from './utils/interactive';
 
 // Package information
-const packageJson = require('../package.json');
+import * as packageJson from '../package.json';
 
 async function createProgram(): Promise<Command> {
   const program = new Command();

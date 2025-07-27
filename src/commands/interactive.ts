@@ -38,9 +38,9 @@ async function executeInteractive(rawOptions: any): Promise<void> {
   const cwd = rawOptions.cwd || ExecUtils.getCurrentDir();
 
   // Validate options
-  const options = validateInteractiveOptions({
-    overwrite: rawOptions.overwrite,
+  validateInteractiveOptions({
     cwd,
+    overwrite: rawOptions.overwrite,
   });
 
   // Find existing environments

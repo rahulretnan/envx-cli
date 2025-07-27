@@ -105,7 +105,7 @@ async function executeEncrypt(rawOptions: any): Promise<void> {
   }
 
   // Validate options
-  const options = validateEncryptOptions({
+  validateEncryptOptions({
     environment,
     passphrase,
     cwd,
@@ -217,7 +217,7 @@ async function executeEncrypt(rawOptions: any): Promise<void> {
               'Could not decrypt existing file - creating new encrypted version'
             );
           }
-        } catch (error) {
+        } catch {
           // Cleanup temp file on error
           if (await FileUtils.fileExists(tempDecryptedPath)) {
             ExecUtils.removeFile(tempDecryptedPath);

@@ -502,7 +502,7 @@ describe('Command Core Logic', () => {
           ...defaults,
           ...Object.fromEntries(
             Object.entries(provided).filter(
-              ([_, value]) => value !== undefined && value !== null
+              ([, value]) => value !== undefined && value !== null
             )
           ),
         };

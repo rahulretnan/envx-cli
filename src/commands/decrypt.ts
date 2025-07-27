@@ -109,7 +109,7 @@ async function executeDecrypt(rawOptions: any): Promise<void> {
   }
 
   // Validate options
-  const options = validateDecryptOptions({
+  validateDecryptOptions({
     environment,
     passphrase,
     cwd,
