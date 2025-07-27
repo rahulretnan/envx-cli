@@ -311,4 +311,92 @@ export class FileUtils {
       mtime: stats.mtime,
     };
   }
+
+  /**
+   * Update .gitignore with smart EnvX patterns
+   */
+  static async updateGitignore(cwd: string): Promise<FileOperationResult> {
+    const gitignorePath = path.join(cwd, '.gitignore');
+
+    const envPatterns = ['.env.*', '!.env.example', '!.env.*.gpg'];
+    const secretPatterns = ['.envrc'];
+
+    try {
+      let existingContent = '';
+      if (await this.fileExists(gitignorePath)) {
+        existingContent = await fs.readFile(gitignorePath, 'utf-8');
+      }
+
+      // Check which patterns are missing
+      const missingEnvPatterns = envPatterns.filter(
+        pattern => !existingContent.includes(pattern)
+      );
+      const missingSecretPatterns = secretPatterns.filter(
+        pattern => !existingContent.includes(pattern)
+      );
+
+      // If all patterns exist, no need to update
+      if (
+        missingEnvPatterns.length === 0 &&
+        missingSecretPatterns.length === 0
+      ) {
+        return {
+          success: true,
+          message: '.gitignore already contains all EnvX patterns',
+          filePath: gitignorePath,
+        };
+      }
+
+      let newContent = existingContent.trim();
+      const addedSections = [];
+
+      // Add Environment files section if needed
+      if (missingEnvPatterns.length > 0) {
+        const envSection = [
+          '',
+          '# Environment files',
+          ...missingEnvPatterns.map(pattern =>
+            pattern === '!.env.*.gpg' ? `${pattern}` : pattern
+          ),
+        ];
+        newContent += (newContent ? '\n' : '') + envSection.join('\n');
+        addedSections.push('Environment files');
+      }
+
+      // Add EnvX secrets section if needed
+      if (missingSecretPatterns.length > 0) {
+        const secretSection = [
+          '',
+          '# EnvX secrets',
+          ...missingSecretPatterns.map(pattern =>
+            pattern === '.envrc' ? `${pattern}` : pattern
+          ),
+        ];
+        newContent += (newContent ? '\n' : '') + secretSection.join('\n');
+        addedSections.push('EnvX secrets');
+      }
+
+      newContent += '\n';
+
+      await fs.writeFile(gitignorePath, newContent, 'utf-8');
+
+      const message =
+        addedSections.length > 0
+          ? `Successfully updated .gitignore with ${addedSections.join(' and ')} patterns`
+          : 'Successfully updated .gitignore with EnvX patterns';
+
+      return {
+        success: true,
+        message,
+        filePath: gitignorePath,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: `Failed to update .gitignore: ${error}`,
+        filePath: gitignorePath,
+        error: error as Error,
+      };
+    }
+  }
 }

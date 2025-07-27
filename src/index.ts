@@ -309,6 +309,16 @@ async function executeInit(options: any): Promise<void> {
 
   CliUtils.success('GPG is available');
 
+  // Update .gitignore with smart EnvX patterns
+  CliUtils.info('Setting up .gitignore...');
+  const gitignoreResult = await FileUtils.updateGitignore(cwd);
+
+  if (gitignoreResult.success) {
+    CliUtils.success(gitignoreResult.message);
+  } else {
+    CliUtils.warning(`Could not update .gitignore: ${gitignoreResult.message}`);
+  }
+
   // Show quick start guide
   await showQuickStart(cwd);
 
