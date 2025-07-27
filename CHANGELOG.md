@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [1.2.3](https://github.com/rahulretnan/envx-cli/compare/v1.2.2...v1.2.3) (2025-07-27)
+
+
+### Features
+
+* implement updateGitignore function to manage EnvX patterns and enhance .gitignore handling ([139318f](https://github.com/rahulretnan/envx-cli/commit/139318feffc17944c1bc59e6e9892352269559cc))
+
 ## [1.2.2](https://github.com/rahulretnan/envx-cli/compare/v1.2.1...v1.2.2) (2025-07-27)
 
 
