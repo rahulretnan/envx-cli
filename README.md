@@ -2,7 +2,7 @@
 
 Environment file encryption and management tool for secure development workflows.
 
-[![npm version](https://badge.fury.io/js/envx.svg)](https://badge.fury.io/js/envx)
+[![npm version](https://badge.fury.io/js/envx-cli.svg)](https://badge.fury.io/js/envx-cli)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 ## Overview
@@ -492,8 +492,8 @@ For detailed testing information, see [TESTING.md](TESTING.md).
 ### Building from Source
 
 ```bash
-git clone https://github.com/your-org/envx
-cd envx
+git clone https://github.com/rahulretnan/envx-cli
+cd envx-cli
 npm install
 npm run build
 npm link
@@ -539,8 +539,8 @@ MIT © [rahulretnan](https://github.com/rahulretnan)
 
 ## Support
 
-- 📝 [Issues](https://github.com/rahulretnan/envx/issues)
-- 💬 [Discussions](https://github.com/rahulretnan/envx/discussions)
+- 📝 [Issues](https://github.com/rahulretnan/envx-cli/issues)
+- 💬 [Discussions](https://github.com/rahulretnan/envx-cli/discussions)
 - 📧 Email: hi@rahulretnan.me
 
 ---

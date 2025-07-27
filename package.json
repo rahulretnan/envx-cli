@@ -1,5 +1,5 @@
 {
-  "name": "envx",
+  "name": "envx-cli",
   "version": "1.0.0",
   "description": "Environment file encryption and management tool",
   "main": "dist/index.js",
@@ -32,12 +32,12 @@
   "author": "EnvX Contributors",
   "repository": {
     "type": "git",
-    "url": "https://github.com/rahulretnan/envx.git"
+    "url": "https://github.com/rahulretnan/envx-cli.git"
   },
   "bugs": {
-    "url": "https://github.com/rahulretnan/envx/issues"
+    "url": "https://github.com/rahulretnan/envx-cli/issues"
   },
-  "homepage": "https://github.com/rahulretnan/envx#readme",
+  "homepage": "https://github.com/rahulretnan/envx-cli#readme",
   "license": "MIT",
   "files": [
     "dist/**/*",
