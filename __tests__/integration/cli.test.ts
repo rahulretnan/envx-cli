@@ -271,4 +271,32 @@ describe('CLI Integration Tests', () => {
       }
     });
   });
+
+  describe('Init Command', () => {
+    it('should show help for init command', () => {
+      const result = runCli('init --help');
+
+      expect(result.code).toBe(0);
+      expect(result.stdout).toContain('Initialize EnvX in a new project');
+      expect(result.stdout).toContain('--cwd');
+    });
+
+    it('should not throw "too many arguments" error', () => {
+      // This test verifies that the init command doesn't have the parsing error
+      // that was occurring when calling the interactive command programmatically
+      const result = runCli('init');
+
+      // The command should either succeed or fail with a meaningful error,
+      // but NOT with "too many arguments" error
+      expect(result.stderr).not.toContain('too many arguments');
+      expect(result.stdout || result.stderr).not.toContain(
+        'too many arguments'
+      );
+
+      // Should show welcome message if successful
+      if (result.code === 0) {
+        expect(result.stdout).toContain('Welcome to EnvX');
+      }
+    });
+  });
 });

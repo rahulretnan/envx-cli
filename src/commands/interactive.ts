@@ -31,7 +31,7 @@ export const createInteractiveCommand = (): Command => {
   return command;
 };
 
-async function executeInteractive(rawOptions: any): Promise<void> {
+export async function executeInteractive(rawOptions: any): Promise<void> {
   InteractiveUtils.displayWelcome();
 
   // Get working directory

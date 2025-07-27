@@ -321,10 +321,9 @@ async function executeInit(options: any): Promise<void> {
     console.log();
     CliUtils.info('Starting interactive setup...');
 
-    // Delegate to interactive command
-    const { createInteractiveCommand } = await import('./commands/interactive');
-    const interactiveCmd = createInteractiveCommand();
-    await interactiveCmd.parseAsync(['interactive'], { from: 'user' });
+    // Import and call the interactive command's execute function directly
+    const { executeInteractive } = await import('./commands/interactive');
+    await executeInteractive({ cwd: options.cwd });
   } else {
     console.log();
     CliUtils.info('You can run the setup later with:');
