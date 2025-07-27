@@ -3,6 +3,7 @@
 import chalk from 'chalk';
 import { Command } from 'commander';
 import path from 'path';
+import { createCopyCommand } from './commands/copy';
 import { createCreateCommand } from './commands/create';
 import { createDecryptCommand } from './commands/decrypt';
 import { createEncryptCommand } from './commands/encrypt';
@@ -47,6 +48,7 @@ async function createProgram(): Promise<Command> {
   program.addCommand(createEncryptCommand());
   program.addCommand(createDecryptCommand());
   program.addCommand(createCreateCommand());
+  program.addCommand(createCopyCommand());
   program.addCommand(createInteractiveCommand());
 
   // List command to show environment status

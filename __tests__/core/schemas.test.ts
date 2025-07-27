@@ -1,4 +1,5 @@
 import {
+  validateCopyOptions,
   validateCreateOptions,
   validateDecryptOptions,
   validateEncryptOptions,
@@ -173,6 +174,91 @@ describe('Schema Validation Core', () => {
 
       const result = validateInteractiveOptions(options);
       expect(result).toEqual(options);
+    });
+  });
+
+  describe('validateCopyOptions', () => {
+    it('should validate correct copy options', () => {
+      const options = {
+        environment: 'production',
+        cwd: '/test/path',
+      };
+
+      const result = validateCopyOptions(options);
+      expect(result).toEqual(options);
+    });
+
+    it('should require environment', () => {
+      expect(() => {
+        validateCopyOptions({
+          cwd: '/test/path',
+        });
+      }).toThrow(/environment.*required/i);
+    });
+
+    it('should reject empty environment', () => {
+      expect(() => {
+        validateCopyOptions({
+          environment: '',
+          cwd: '/test/path',
+        });
+      }).toThrow();
+    });
+
+    it('should handle optional passphrase', () => {
+      const options = {
+        environment: 'production',
+        passphrase: 'test-passphrase',
+        cwd: '/test/path',
+      };
+
+      const result = validateCopyOptions(options);
+      expect(result.passphrase).toBe('test-passphrase');
+    });
+
+    it('should handle optional secret', () => {
+      const options = {
+        environment: 'production',
+        secret: 'PRODUCTION_SECRET',
+        cwd: '/test/path',
+      };
+
+      const result = validateCopyOptions(options);
+      expect(result.secret).toBe('PRODUCTION_SECRET');
+    });
+
+    it('should handle overwrite option', () => {
+      const options = {
+        environment: 'staging',
+        overwrite: true,
+      };
+
+      const result = validateCopyOptions(options);
+      expect(result.overwrite).toBe(true);
+    });
+
+    it('should work with minimal options', () => {
+      const options = {
+        environment: 'development',
+      };
+
+      const result = validateCopyOptions(options);
+      expect(result.environment).toBe('development');
+      expect(result.passphrase).toBeUndefined();
+      expect(result.secret).toBeUndefined();
+      expect(result.cwd).toBeUndefined();
+      expect(result.overwrite).toBeUndefined();
+    });
+
+    it('should handle all flag', () => {
+      const options = {
+        environment: 'production',
+        all: true,
+      };
+
+      const result = validateCopyOptions(options);
+      expect(result.all).toBe(true);
+      expect(result.environment).toBe('production');
     });
   });
 

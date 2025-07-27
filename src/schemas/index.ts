@@ -74,6 +74,33 @@ export const interactiveSchema = z.object({
   cwd: z.string().optional(),
 });
 
+export const copySchema = z
+  .object({
+    environment: z.string().optional(),
+    passphrase: z.string().optional(),
+    secret: z.string().optional(),
+    cwd: z.string().optional(),
+    overwrite: z.boolean().optional(),
+    all: z.boolean().optional(),
+  })
+  .refine(
+    data => {
+      // If all is true, environment is required
+      if (data.all && !data.environment) {
+        return false;
+      }
+      // If all is false/undefined, environment is still required
+      if (!data.all && !data.environment) {
+        return false;
+      }
+      return true;
+    },
+    {
+      message: 'Environment is required, especially when using --all flag',
+      path: ['environment'],
+    }
+  );
+
 export const stageSecretSchema = z.object({
   stage: z.string().min(1, 'Stage is required'),
   secret: z.string().min(1, 'Secret is required'),
@@ -100,6 +127,7 @@ export type EncryptSchemaType = z.infer<typeof encryptSchema>;
 export type DecryptSchemaType = z.infer<typeof decryptSchema>;
 export type CreateSchemaType = z.infer<typeof createSchema>;
 export type InteractiveSchemaType = z.infer<typeof interactiveSchema>;
+export type CopySchemaType = z.infer<typeof copySchema>;
 export type StageSecretSchemaType = z.infer<typeof stageSecretSchema>;
 export type EnvrcConfigSchemaType = z.infer<typeof envrcConfigSchema>;
 export type FileOperationSchemaType = z.infer<typeof fileOperationSchema>;
@@ -168,3 +196,13 @@ export const validateCreateOptions = (data: unknown) =>
   validateSchema(createSchema, data);
 export const validateInteractiveOptions = (data: unknown) =>
   validateSchema(interactiveSchema, data);
+export const validateCopyOptions = (data: unknown) => {
+  // For copy command, --all requires environment to be specified
+  const processedData = data as any;
+  if (processedData?.all && !processedData?.environment) {
+    throw new Error(
+      'The --all flag requires an environment to be specified with -e/--environment'
+    );
+  }
+  return validateSchema(copySchema, data);
+};

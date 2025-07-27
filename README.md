@@ -99,7 +99,13 @@ git add *.gpg
 git commit -m "Add encrypted environment files"
 ```
 
-6. **Decrypt when needed:**
+6. **Copy environment to .env for use:**
+
+```bash
+envx copy -e production
+```
+
+7. **Decrypt when needed:**
 
 ```bash
 envx decrypt -e production
@@ -242,6 +248,52 @@ envx ls
 
 - `-c, --cwd <path>` - Working directory
 
+### `envx copy`
+
+Copy environment file from a specific stage to `.env`. This command is perfect for deployment scenarios where you need to activate a specific environment configuration.
+
+```bash
+# Copy production environment to .env (single directory)
+envx copy -e production
+
+# Copy to ALL directories with environment files (multi-service)
+envx copy -e production --all
+
+# Copy development environment to .env
+envx copy -e development
+
+# Copy with overwrite (no confirmation)
+envx copy -e staging --overwrite
+
+# Copy from encrypted file (auto-decrypts)
+envx copy -e production -p "your-passphrase"
+
+# Use secret from .envrc for encrypted files
+envx copy -e production -s PRODUCTION_SECRET
+
+# Copy production to all services from project root
+envx copy -e production --all --overwrite
+```
+
+**Options:**
+
+- `-e, --environment <env>` - Environment name (required)
+- `-a, --all` - Process all directories with environment files
+- `-p, --passphrase <pass>` - Passphrase for decryption (if source is encrypted)
+- `-s, --secret <secret>` - Secret variable name from .envrc
+- `--overwrite` - Overwrite existing .env file without confirmation
+- `-c, --cwd <path>` - Working directory
+
+**How it works:**
+
+- **Single directory mode**: Copies `.env.<environment>` to `.env` in current directory
+- **Multi-directory mode (`--all`)**: Finds all directories with environment files and copies to each
+- If `.env.<environment>` exists (unencrypted), it copies directly to `.env`
+- If `.env.<environment>.gpg` exists (encrypted), it decrypts and copies to `.env`
+- Prefers unencrypted files over encrypted ones if both exist
+- Creates backup of existing `.env` file during encrypted operations
+- Shows security warnings when copying production environments
+
 ### `envx status`
 
 Show project encryption status and recommendations.
@@ -289,7 +341,17 @@ envx interactive
 envx encrypt -e production
 ```
 
-5. **Add to version control:**
+5. **Copy environment for application use:**
+
+```bash
+# For development
+envx copy -e development
+
+# For production deployment
+envx copy -e production
+```
+
+6. **Add to version control:**
 
 ```bash
 echo ".env.*" >> .gitignore
@@ -298,23 +360,85 @@ git add .env.production.gpg .envrc
 git commit -m "Add encrypted production environment"
 ```
 
+### Deployment Workflow
+
+1. **Single service deployment:**
+
+```bash
+# On production server after pulling latest code
+envx copy -e production --overwrite
+```
+
+2. **Multi-service deployment (from project root):**
+
+```bash
+# Copy production environment to ALL services at once
+envx copy -e production --all --overwrite
+```
+
+3. **For local development with production data:**
+
+```bash
+# Copy production environment locally (be careful!)
+envx copy -e production
+
+# Or copy to all services locally
+envx copy -e production --all
+```
+
+4. **Switch between environments easily:**
+
+```bash
+# Use development environment across all services
+envx copy -e development --all --overwrite
+
+# Switch to staging across all services
+envx copy -e staging --all --overwrite
+
+# Switch to production (with warning)
+envx copy -e production --all --overwrite
+```
+
 ### Team Workflow
 
-1. **Clone repository and decrypt:**
+1. **Clone repository and set up environment:**
 
 ```bash
 git clone <your-repo>
 cd <your-repo>
-envx decrypt -e production
+
+# For development
+envx copy -e development
+
+# For production deployment
+envx copy -e production
 ```
 
 2. **Make changes and re-encrypt:**
 
 ```bash
-# Edit .env.production
+# Edit .env.production directly or copy from .env after changes
+cp .env .env.production  # if you made changes to .env
 envx encrypt -e production
 git add .env.production.gpg
 git commit -m "Update production configuration"
+```
+
+### Multi-Service Management
+
+**From project root, manage all services at once:**
+
+```bash
+# Copy production environment to all services
+envx copy -e production --all
+
+# Copy staging environment to all services
+envx copy -e staging --all --overwrite
+
+# Perfect for deployment scripts
+#!/bin/bash
+envx copy -e production --all --overwrite
+docker-compose up -d
 ```
 
 ### Batch Operations
@@ -348,6 +472,31 @@ envx decrypt --all --overwrite
 - **Comprehensive Reporting**: Shows detailed results for each environment plus overall summary
 - **Safety Checks**: Validates compatibility with other flags (incompatible with `--environment` and `--interactive`)
 - **Flexible Configuration**: Works with all existing options like `--passphrase`, `--secret`, `--cwd`, and `--overwrite`
+
+### Copy to `.env` Workflow
+
+**Activate environments for your application:**
+
+```bash
+# Activate development environment for local work
+envx copy -e development
+
+# Activate staging for testing
+envx copy -e staging --overwrite
+
+# Activate production for deployment
+envx copy -e production --overwrite
+```
+
+**Use cases for `envx copy`:**
+
+- 🚀 **Deployment**: Copy environment configuration to `.env` for application use
+- 🔄 **Environment Switching**: Quickly switch between different configurations
+- 🛠️ **Local Development**: Use production/staging config locally for debugging
+- 📦 **Docker/Containers**: Set up environment in containerized deployments
+- 🔧 **CI/CD**: Activate specific environments during pipeline stages
+- 🏗️ **Multi-Service**: Manage environment files across multiple services from project root
+- ⚡ **Batch Operations**: Copy same environment to all services with one command
 
 ## Configuration
 

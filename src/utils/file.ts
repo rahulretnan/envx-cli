@@ -298,4 +298,17 @@ export class FileUtils {
   static isEncryptedFile(filePath: string): boolean {
     return filePath.endsWith('.gpg');
   }
+
+  /**
+   * Get file stats
+   */
+  static async getFileStats(
+    filePath: string
+  ): Promise<{ size: number; mtime: Date }> {
+    const stats = await fs.stat(filePath);
+    return {
+      size: stats.size,
+      mtime: stats.mtime,
+    };
+  }
 }
