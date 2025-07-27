@@ -29,19 +29,23 @@ Before using EnvX, ensure you have:
 ### Installing GPG
 
 #### macOS
+
 ```bash
 brew install gnupg
 ```
 
 #### Ubuntu/Debian
+
 ```bash
 sudo apt-get install gnupg
 ```
 
 #### Windows
+
 Download from [https://gnupg.org/download/](https://gnupg.org/download/)
 
 #### Verify Installation
+
 ```bash
 gpg --version
 ```
@@ -49,46 +53,54 @@ gpg --version
 ## Installation
 
 ### Global Installation (Recommended)
+
 ```bash
-npm install -g envx
+npm install -g envx-cli
 ```
 
 ### Local Installation
+
 ```bash
-npm install envx
+npm install envx-cli
 npx envx --help
 ```
 
 ## Quick Start
 
 1. **Initialize EnvX in your project:**
+
 ```bash
 envx init
 ```
 
 2. **Create environment files:**
+
 ```bash
 envx create -e development
 envx create -e production
 ```
 
 3. **Set up secrets for encryption:**
+
 ```bash
 envx interactive
 ```
 
 4. **Encrypt your environment files:**
+
 ```bash
 envx encrypt -e production
 ```
 
 5. **Commit encrypted files to git:**
+
 ```bash
 git add *.gpg
 git commit -m "Add encrypted environment files"
 ```
 
 6. **Decrypt when needed:**
+
 ```bash
 envx decrypt -e production
 ```
@@ -96,6 +108,7 @@ envx decrypt -e production
 ## Commands
 
 ### `envx init`
+
 Initialize EnvX in a new project with guided setup.
 
 ```bash
@@ -103,6 +116,7 @@ envx init
 ```
 
 ### `envx create`
+
 Create new environment files.
 
 ```bash
@@ -120,6 +134,7 @@ envx create -e staging --overwrite
 ```
 
 **Options:**
+
 - `-e, --environment <env>` - Environment name
 - `-t, --template <path>` - Template file path
 - `-i, --interactive` - Interactive mode
@@ -127,6 +142,7 @@ envx create -e staging --overwrite
 - `-c, --cwd <path>` - Working directory
 
 ### `envx encrypt`
+
 Encrypt environment files using GPG.
 
 ```bash
@@ -144,6 +160,7 @@ envx encrypt -e development -p "your-passphrase"
 ```
 
 **Options:**
+
 - `-e, --environment <env>` - Environment name (required)
 - `-p, --passphrase <pass>` - Encryption passphrase
 - `-s, --secret <secret>` - Secret variable name from .envrc
@@ -151,6 +168,7 @@ envx encrypt -e development -p "your-passphrase"
 - `-c, --cwd <path>` - Working directory
 
 ### `envx decrypt`
+
 Decrypt environment files.
 
 ```bash
@@ -165,6 +183,7 @@ envx decrypt -e staging -i
 ```
 
 **Options:**
+
 - `-e, --environment <env>` - Environment name (required)
 - `-p, --passphrase <pass>` - Decryption passphrase
 - `-s, --secret <secret>` - Secret variable name from .envrc
@@ -173,6 +192,7 @@ envx decrypt -e staging -i
 - `-c, --cwd <path>` - Working directory
 
 ### `envx interactive`
+
 Interactive setup for `.envrc` file with secrets.
 
 ```bash
@@ -187,11 +207,13 @@ envx interactive --generate
 ```
 
 **Options:**
+
 - `--overwrite` - Overwrite existing .envrc file
 - `--generate` - Generate random secrets
 - `-c, --cwd <path>` - Working directory
 
 ### `envx list`
+
 List all environment files and their status.
 
 ```bash
@@ -203,9 +225,11 @@ envx ls
 ```
 
 **Options:**
+
 - `-c, --cwd <path>` - Working directory
 
 ### `envx status`
+
 Show project encryption status and recommendations.
 
 ```bash
@@ -213,6 +237,7 @@ envx status
 ```
 
 **Options:**
+
 - `-c, --cwd <path>` - Working directory
 
 ## Workflow Examples
@@ -220,12 +245,14 @@ envx status
 ### Basic Workflow
 
 1. **Create environment files:**
+
 ```bash
 envx create -e development
 envx create -e production
 ```
 
 2. **Edit your environment files:**
+
 ```bash
 # Edit .env.development
 echo "DATABASE_URL=postgresql://localhost:5432/myapp_dev" >> .env.development
@@ -237,16 +264,19 @@ echo "API_KEY=prod-api-key-secret" >> .env.production
 ```
 
 3. **Set up encryption secrets:**
+
 ```bash
 envx interactive
 ```
 
 4. **Encrypt production secrets:**
+
 ```bash
 envx encrypt -e production
 ```
 
 5. **Add to version control:**
+
 ```bash
 echo ".env.*" >> .gitignore
 echo "!*.gpg" >> .gitignore
@@ -257,6 +287,7 @@ git commit -m "Add encrypted production environment"
 ### Team Workflow
 
 1. **Clone repository and decrypt:**
+
 ```bash
 git clone <your-repo>
 cd <your-repo>
@@ -264,6 +295,7 @@ envx decrypt -e production
 ```
 
 2. **Make changes and re-encrypt:**
+
 ```bash
 # Edit .env.production
 envx encrypt -e production
@@ -289,6 +321,7 @@ export PRODUCTION_SECRET="your-production-secret"
 EnvX follows the convention: `<STAGE>_SECRET`
 
 Examples:
+
 - `DEVELOPMENT_SECRET`
 - `STAGING_SECRET`
 - `PRODUCTION_SECRET`
@@ -342,6 +375,7 @@ your-project/
 EnvX works great with [direnv](https://direnv.net/) for automatic environment loading:
 
 1. **Install direnv:**
+
 ```bash
 # macOS
 brew install direnv
@@ -351,6 +385,7 @@ sudo apt install direnv
 ```
 
 2. **Add to your shell profile:**
+
 ```bash
 # For bash
 echo 'eval "$(direnv hook bash)"' >> ~/.bashrc
@@ -360,6 +395,7 @@ echo 'eval "$(direnv hook zsh)"' >> ~/.zshrc
 ```
 
 3. **Allow direnv in your project:**
+
 ```bash
 direnv allow
 ```
@@ -371,17 +407,20 @@ Now your secrets will be automatically loaded when you enter the project directo
 ### GPG Issues
 
 **Problem:** `gpg: command not found`
+
 ```bash
 # Install GPG (see Prerequisites section)
 ```
 
 **Problem:** `gpg: decryption failed: Bad session key`
+
 ```bash
 # Wrong passphrase - try again or check your .envrc file
 envx decrypt -e production
 ```
 
 **Problem:** `gpg: can't connect to the agent`
+
 ```bash
 # Restart GPG agent
 gpgconf --kill gpg-agent
@@ -391,6 +430,7 @@ gpgconf --launch gpg-agent
 ### Permission Issues
 
 **Problem:** `EACCES: permission denied`
+
 ```bash
 # Check file permissions
 ls -la .env.*
@@ -400,6 +440,7 @@ chmod 644 .env.*
 ### File Not Found
 
 **Problem:** `Template file not found`
+
 ```bash
 # Check if template exists
 ls -la .env.example
@@ -463,6 +504,7 @@ The test suite prioritizes **essential functionality** over comprehensive covera
 **Current Status**: ✅ 95 tests passing, ~7s execution time
 
 - **Core Tests**: 82 tests covering essential functionality
+
   - Schema validation: 25 tests (command input validation)
   - File utilities: 39 tests (path manipulation, secret generation)
   - Command logic: 18 tests (workflow patterns and decision logic)
@@ -547,4 +589,4 @@ MIT © [rahulretnan](https://github.com/rahulretnan)
 
 **Made with ❤️ by developers, for developers.**
 
-*Remember: Security is not a feature, it's a requirement. EnvX helps you maintain security without sacrificing developer experience.*
+_Remember: Security is not a feature, it's a requirement. EnvX helps you maintain security without sacrificing developer experience._
