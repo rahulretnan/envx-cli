@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [1.2.1](https://github.com/rahulretnan/envx-cli/compare/v1.2.0...v1.2.1) (2025-07-27)
+
+
+### Features
+
+* enhance environment file copy command with user prompts for missing files ([c5f78cd](https://github.com/rahulretnan/envx-cli/commit/c5f78cd375ed30220d5bc331f4c7ab2ea471cb2d))
+
 # [1.2.0](https://github.com/rahulretnan/envx-cli/compare/v1.1.1...v1.2.0) (2025-07-27)
 
 
