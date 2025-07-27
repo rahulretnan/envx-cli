@@ -18,6 +18,7 @@ export const createDecryptCommand = (): Command => {
     .option('-s, --secret <secret>', 'Secret key from environment variable')
     .option('-c, --cwd <path>', 'Working directory path')
     .option('-i, --interactive', 'Interactive mode for selecting files')
+    .option('-a, --all', 'Process all available environments')
     .option(
       '--overwrite',
       'Overwrite existing decrypted files without confirmation'
@@ -38,6 +39,16 @@ export const createDecryptCommand = (): Command => {
 
 async function executeDecrypt(rawOptions: any): Promise<void> {
   CliUtils.header('Environment File Decryption');
+
+  // Validate --all flag compatibility
+  if (rawOptions.all) {
+    if (rawOptions.environment) {
+      throw new Error('Cannot use --all with --environment flag');
+    }
+    if (rawOptions.interactive) {
+      throw new Error('Interactive mode is not compatible with --all flag');
+    }
+  }
 
   // Get working directory
   const cwd = rawOptions.cwd || ExecUtils.getCurrentDir();
@@ -62,8 +73,13 @@ async function executeDecrypt(rawOptions: any): Promise<void> {
     return;
   }
 
-  let environment = rawOptions.environment;
-  let passphrase = rawOptions.passphrase;
+  // Handle --all flag
+  if (rawOptions.all) {
+    await processAllEnvironments(rawOptions, availableEnvironments, cwd);
+    return;
+  }
+
+  let environment: string = rawOptions.environment || '';
 
   // Interactive environment selection if not provided
   if (!environment) {
@@ -87,8 +103,123 @@ async function executeDecrypt(rawOptions: any): Promise<void> {
     );
   }
 
+  await processSingleEnvironment(rawOptions, environment, cwd);
+}
+
+async function processAllEnvironments(
+  rawOptions: any,
+  environments: string[],
+  cwd: string
+): Promise<void> {
+  CliUtils.info(
+    `Processing ${environments.length} environment(s): ${environments.map(env => CliUtils.formatEnvironment(env)).join(', ')}`
+  );
+
+  let totalSuccess = 0;
+  let totalErrors = 0;
+  const results: Array<{
+    environment: string;
+    success: number;
+    errors: number;
+  }> = [];
+
+  for (const environment of environments) {
+    console.log();
+    CliUtils.subheader(
+      `Processing Environment: ${CliUtils.formatEnvironment(environment)}`
+    );
+
+    try {
+      const result = await processSingleEnvironment(
+        rawOptions,
+        environment,
+        cwd,
+        true
+      );
+      results.push({
+        environment,
+        success: result.successCount,
+        errors: result.errorCount,
+      });
+      totalSuccess += result.successCount;
+      totalErrors += result.errorCount;
+    } catch (error) {
+      CliUtils.error(
+        `Failed to process environment '${environment}': ${error instanceof Error ? error.message : String(error)}`
+      );
+      results.push({ environment, success: 0, errors: 1 });
+      totalErrors++;
+    }
+  }
+
+  // Final summary for all environments
+  console.log();
+  CliUtils.header('Overall Summary');
+
+  results.forEach(result => {
+    if (result.success > 0 || result.errors > 0) {
+      console.log(
+        `${CliUtils.formatEnvironment(result.environment)}: ${chalk.green(`${result.success} success`)} | ${chalk.red(`${result.errors} errors`)}`
+      );
+    }
+  });
+
+  console.log();
+  if (totalSuccess > 0) {
+    CliUtils.success(
+      `Total: Successfully decrypted ${totalSuccess} file(s) across all environments`
+    );
+  }
+
+  if (totalErrors > 0) {
+    CliUtils.error(
+      `Total: Failed to decrypt ${totalErrors} file(s) across all environments`
+    );
+  }
+
+  // Show next steps
+  if (totalSuccess > 0) {
+    console.log();
+    CliUtils.info('Next steps:');
+    console.log(chalk.gray('• Review the decrypted environment files'));
+    console.log(
+      chalk.gray('• Remember: decrypted files contain sensitive data')
+    );
+    console.log(
+      chalk.gray('• Consider re-encrypting files when done: envx encrypt')
+    );
+    console.log(
+      chalk.gray('• Never commit decrypted .env files to version control')
+    );
+  }
+
+  // Show security warning
+  if (totalSuccess > 0) {
+    console.log();
+    CliUtils.warning('Security Notice:');
+    console.log(chalk.yellow('Decrypted files contain sensitive information.'));
+    console.log(
+      chalk.yellow(
+        'Ensure they are not accidentally committed to version control.'
+      )
+    );
+  }
+
+  if (totalErrors > 0) {
+    process.exit(1);
+  }
+}
+
+async function processSingleEnvironment(
+  rawOptions: any,
+  environment: string,
+  cwd: string,
+  isPartOfAll: boolean = false
+): Promise<{ successCount: number; errorCount: number }> {
+  let passphrase: string = rawOptions.passphrase || '';
+
   // Get passphrase
-  if (!passphrase) {
+  if (!passphrase || passphrase.trim() === '') {
     // Try to get from .envrc file
     const envrcConfig = await FileUtils.readEnvrc(cwd);
     const secretVar = FileUtils.generateSecretVariableName(environment);
@@ -102,27 +233,34 @@ async function executeDecrypt(rawOptions: any): Promise<void> {
       passphrase = envrcConfig[secretVar];
       CliUtils.info(`Using secret from .envrc: ${chalk.cyan(secretVar)}`);
     } else {
-      passphrase = await InteractiveUtils.promptPassphrase(
-        'Enter decryption passphrase:'
-      );
+      const promptMessage = isPartOfAll
+        ? `Enter decryption passphrase for ${CliUtils.formatEnvironment(environment)}:`
+        : 'Enter decryption passphrase:';
+      passphrase = await InteractiveUtils.promptPassphrase(promptMessage);
     }
   }
 
   // Validate options
-  validateDecryptOptions({
-    environment,
-    passphrase,
-    cwd,
-    secret: rawOptions.secret,
-  });
+  if (!isPartOfAll) {
+    validateDecryptOptions({
+      environment,
+      passphrase,
+      cwd,
+      secret: rawOptions.secret,
+    });
+  }
 
   // Test GPG operation
-  CliUtils.info('Testing GPG operation...');
+  if (!isPartOfAll) {
+    CliUtils.info('Testing GPG operation...');
+  }
   const gpgTest = ExecUtils.testGpgOperation(passphrase);
   if (!gpgTest.success) {
     throw new Error(`GPG test failed: ${gpgTest.message}`);
   }
-  CliUtils.success('GPG test passed');
+  if (!isPartOfAll) {
+    CliUtils.success('GPG test passed');
+  }
 
   // Find encrypted environment files
   const envFiles = await FileUtils.findEnvFiles(environment, cwd);
@@ -132,21 +270,31 @@ async function executeDecrypt(rawOptions: any): Promise<void> {
     CliUtils.warning(
       `No encrypted .env.${environment}.gpg files found to decrypt.`
     );
-    CliUtils.info(
-      'Use the "encrypt" command to encrypt environment files first.'
-    );
-    return;
+    if (!isPartOfAll) {
+      CliUtils.info(
+        'Use the "encrypt" command to encrypt environment files first.'
+      );
+    }
+    return { successCount: 0, errorCount: 0 };
   }
 
-  CliUtils.info(`Found ${encryptedFiles.length} encrypted file(s) to decrypt:`);
-  encryptedFiles.forEach(file => {
-    const encryptedPath = FileUtils.getEncryptedPath(file.path);
-    console.log(`  • ${CliUtils.formatPath(encryptedPath, cwd)}`);
-  });
+  if (!isPartOfAll) {
+    CliUtils.info(
+      `Found ${encryptedFiles.length} encrypted file(s) to decrypt:`
+    );
+    encryptedFiles.forEach(file => {
+      const encryptedPath = FileUtils.getEncryptedPath(file.path);
+      console.log(`  • ${CliUtils.formatPath(encryptedPath, cwd)}`);
+    });
+  } else {
+    CliUtils.info(
+      `Found ${encryptedFiles.length} encrypted file(s) to decrypt`
+    );
+  }
 
-  // Interactive file selection if requested
+  // Interactive file selection if requested (skip for --all)
   let filesToProcess = encryptedFiles;
-  if (rawOptions.interactive && encryptedFiles.length > 1) {
+  if (rawOptions.interactive && encryptedFiles.length > 1 && !isPartOfAll) {
     const selectedPaths = await InteractiveUtils.selectFiles(
       encryptedFiles.map(f =>
         FileUtils.getRelativePath(FileUtils.getEncryptedPath(f.path), cwd)
@@ -163,7 +311,7 @@ async function executeDecrypt(rawOptions: any): Promise<void> {
 
   if (filesToProcess.length === 0) {
     CliUtils.info('No files selected for decryption.');
-    return;
+    return { successCount: 0, errorCount: 0 };
   }
 
   // Check for existing decrypted files and warn if overwrite not specified
@@ -174,7 +322,7 @@ async function executeDecrypt(rawOptions: any): Promise<void> {
     }
   }
 
-  if (conflictFiles.length > 0 && !rawOptions.overwrite) {
+  if (conflictFiles.length > 0 && !rawOptions.overwrite && !isPartOfAll) {
     CliUtils.warning(
       `The following files already exist and will be overwritten:`
     );
@@ -189,22 +337,24 @@ async function executeDecrypt(rawOptions: any): Promise<void> {
 
     if (!confirm) {
       CliUtils.info('Operation cancelled.');
-      return;
+      return { successCount: 0, errorCount: 0 };
     }
   }
 
-  // Confirm operation
-  if (!rawOptions.interactive && conflictFiles.length === 0) {
+  // Confirm operation (skip for --all)
+  if (!rawOptions.interactive && conflictFiles.length === 0 && !isPartOfAll) {
     const confirm = await InteractiveUtils.confirmOperation(
       `Decrypt ${filesToProcess.length} file(s) for ${CliUtils.formatEnvironment(environment)}?`
     );
     if (!confirm) {
       CliUtils.info('Operation cancelled.');
-      return;
+      return { successCount: 0, errorCount: 0 };
     }
   }
 
-  CliUtils.subheader('Decrypting Files');
+  if (!isPartOfAll) {
+    CliUtils.subheader('Decrypting Files');
+  }
 
   let successCount = 0;
   let errorCount = 0;
@@ -266,47 +416,53 @@ async function executeDecrypt(rawOptions: any): Promise<void> {
     }
   }
 
-  // Final summary
-  console.log();
-  CliUtils.subheader('Decryption Summary');
-
-  if (successCount > 0) {
-    CliUtils.success(`Successfully decrypted ${successCount} file(s)`);
-  }
-
-  if (errorCount > 0) {
-    CliUtils.error(`Failed to decrypt ${errorCount} file(s)`);
-  }
-
-  // Show next steps
-  if (successCount > 0) {
+  // Final summary (only for single environment mode)
+  if (!isPartOfAll) {
     console.log();
-    CliUtils.info('Next steps:');
-    console.log(chalk.gray('• Review the decrypted environment files'));
-    console.log(
-      chalk.gray('• Remember: decrypted files contain sensitive data')
-    );
-    console.log(
-      chalk.gray('• Consider re-encrypting files when done: envx encrypt')
-    );
-    console.log(
-      chalk.gray('• Never commit decrypted .env files to version control')
-    );
+    CliUtils.subheader('Decryption Summary');
+
+    if (successCount > 0) {
+      CliUtils.success(`Successfully decrypted ${successCount} file(s)`);
+    }
+
+    if (errorCount > 0) {
+      CliUtils.error(`Failed to decrypt ${errorCount} file(s)`);
+    }
+
+    // Show next steps
+    if (successCount > 0) {
+      console.log();
+      CliUtils.info('Next steps:');
+      console.log(chalk.gray('• Review the decrypted environment files'));
+      console.log(
+        chalk.gray('• Remember: decrypted files contain sensitive data')
+      );
+      console.log(
+        chalk.gray('• Consider re-encrypting files when done: envx encrypt')
+      );
+      console.log(
+        chalk.gray('• Never commit decrypted .env files to version control')
+      );
+    }
+
+    // Show security warning
+    if (successCount > 0) {
+      console.log();
+      CliUtils.warning('Security Notice:');
+      console.log(
+        chalk.yellow('Decrypted files contain sensitive information.')
+      );
+      console.log(
+        chalk.yellow(
+          'Ensure they are not accidentally committed to version control.'
+        )
+      );
+    }
+
+    if (errorCount > 0) {
+      process.exit(1);
+    }
   }
 
-  // Show security warning
-  if (successCount > 0) {
-    console.log();
-    CliUtils.warning('Security Notice:');
-    console.log(chalk.yellow('Decrypted files contain sensitive information.'));
-    console.log(
-      chalk.yellow(
-        'Ensure they are not accidentally committed to version control.'
-      )
-    );
-  }
-
-  if (errorCount > 0) {
-    process.exit(1);
-  }
+  return { successCount, errorCount };
 }

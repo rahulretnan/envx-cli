@@ -10,19 +10,58 @@ export const baseOptionsSchema = z.object({
   stage: z.string().optional(),
 });
 
-export const encryptSchema = z.object({
-  environment: z.string().min(1, 'Environment is required'),
-  passphrase: z.string().min(1, 'Passphrase is required'),
-  cwd: z.string().optional(),
-  secret: z.string().optional(),
-});
+export const encryptSchema = z
+  .object({
+    environment: z.string().min(1, 'Environment is required'),
+    passphrase: z.string().min(1, 'Passphrase is required'),
+    cwd: z.string().optional(),
+    secret: z.string().optional(),
+    all: z.boolean().optional(),
+  })
+  .refine(
+    data => {
+      // If all is true, environment should not be provided
+      if (data.all && data.environment) {
+        return false;
+      }
+      // If all is false/undefined, environment is required
+      if (!data.all && !data.environment) {
+        return false;
+      }
+      return true;
+    },
+    {
+      message: 'Cannot use --all with --environment flag',
+      path: ['all'],
+    }
+  );
 
-export const decryptSchema = z.object({
-  environment: z.string().min(1, 'Environment is required'),
-  passphrase: z.string().min(1, 'Passphrase is required'),
-  cwd: z.string().optional(),
-  secret: z.string().optional(),
-});
+export const decryptSchema = z
+  .object({
+    environment: z.string().min(1, 'Environment is required'),
+    passphrase: z.string().min(1, 'Passphrase is required'),
+    cwd: z.string().optional(),
+    secret: z.string().optional(),
+    all: z.boolean().optional(),
+    overwrite: z.boolean().optional(),
+  })
+  .refine(
+    data => {
+      // If all is true, environment should not be provided
+      if (data.all && data.environment) {
+        return false;
+      }
+      // If all is false/undefined, environment is required
+      if (!data.all && !data.environment) {
+        return false;
+      }
+      return true;
+    },
+    {
+      message: 'Cannot use --all with --environment flag',
+      path: ['all'],
+    }
+  );
 
 export const createSchema = z.object({
   environment: z.string().min(1, 'Environment is required'),
@@ -83,10 +122,48 @@ export const validateSchema = <T>(schema: z.ZodSchema<T>, data: unknown): T => {
 
 export const validateOptions = (data: unknown) =>
   validateSchema(baseOptionsSchema, data);
-export const validateEncryptOptions = (data: unknown) =>
-  validateSchema(encryptSchema, data);
-export const validateDecryptOptions = (data: unknown) =>
-  validateSchema(decryptSchema, data);
+export const validateEncryptOptions = (data: unknown) => {
+  // Handle --all flag by making environment optional when all is true
+  const processedData = data as any;
+  if (processedData?.all) {
+    const schemaForAll = z
+      .object({
+        passphrase: z.string().min(1, 'Passphrase is required'),
+        cwd: z.string().optional(),
+        secret: z.string().optional(),
+        all: z.boolean().optional(),
+        environment: z.string().optional(),
+      })
+      .refine(data => !data.environment, {
+        message: 'Cannot use --all with --environment flag',
+        path: ['environment'],
+      });
+    return validateSchema(schemaForAll, data);
+  }
+  return validateSchema(encryptSchema, data);
+};
+
+export const validateDecryptOptions = (data: unknown) => {
+  // Handle --all flag by making environment optional when all is true
+  const processedData = data as any;
+  if (processedData?.all) {
+    const schemaForAll = z
+      .object({
+        passphrase: z.string().min(1, 'Passphrase is required'),
+        cwd: z.string().optional(),
+        secret: z.string().optional(),
+        all: z.boolean().optional(),
+        overwrite: z.boolean().optional(),
+        environment: z.string().optional(),
+      })
+      .refine(data => !data.environment, {
+        message: 'Cannot use --all with --environment flag',
+        path: ['environment'],
+      });
+    return validateSchema(schemaForAll, data);
+  }
+  return validateSchema(decryptSchema, data);
+};
 export const validateCreateOptions = (data: unknown) =>
   validateSchema(createSchema, data);
 export const validateInteractiveOptions = (data: unknown) =>

@@ -149,11 +149,17 @@ Encrypt environment files using GPG.
 # Encrypt specific environment
 envx encrypt -e production
 
+# Encrypt all environments at once
+envx encrypt --all
+
 # Use custom secret from .envrc
 envx encrypt -e production -s CUSTOM_SECRET
 
-# Interactive file selection
+# Interactive file selection (for single environment)
 envx encrypt -e staging -i
+
+# Encrypt all with specific passphrase
+envx encrypt --all -p "your-passphrase"
 
 # Specify passphrase directly (not recommended)
 envx encrypt -e development -p "your-passphrase"
@@ -161,10 +167,11 @@ envx encrypt -e development -p "your-passphrase"
 
 **Options:**
 
-- `-e, --environment <env>` - Environment name (required)
+- `-e, --environment <env>` - Environment name (required unless using --all)
+- `-a, --all` - Process all available environments
 - `-p, --passphrase <pass>` - Encryption passphrase
 - `-s, --secret <secret>` - Secret variable name from .envrc
-- `-i, --interactive` - Interactive file selection
+- `-i, --interactive` - Interactive file selection (disabled with --all)
 - `-c, --cwd <path>` - Working directory
 
 ### `envx decrypt`
@@ -175,19 +182,26 @@ Decrypt environment files.
 # Decrypt specific environment
 envx decrypt -e production
 
+# Decrypt all environments at once
+envx decrypt --all
+
 # Overwrite existing files without confirmation
 envx decrypt -e development --overwrite
 
-# Interactive file selection
+# Decrypt all with overwrite flag
+envx decrypt --all --overwrite
+
+# Interactive file selection (for single environment)
 envx decrypt -e staging -i
 ```
 
 **Options:**
 
-- `-e, --environment <env>` - Environment name (required)
+- `-e, --environment <env>` - Environment name (required unless using --all)
+- `-a, --all` - Process all available environments
 - `-p, --passphrase <pass>` - Decryption passphrase
 - `-s, --secret <secret>` - Secret variable name from .envrc
-- `-i, --interactive` - Interactive file selection
+- `-i, --interactive` - Interactive file selection (disabled with --all)
 - `--overwrite` - Overwrite existing files without confirmation
 - `-c, --cwd <path>` - Working directory
 
@@ -302,6 +316,38 @@ envx encrypt -e production
 git add .env.production.gpg
 git commit -m "Update production configuration"
 ```
+
+### Batch Operations
+
+**Process all environments at once:**
+
+```bash
+# Encrypt all environment files
+envx encrypt --all
+
+# Decrypt all environment files
+envx decrypt --all
+
+# Decrypt all with overwrite protection disabled
+envx decrypt --all --overwrite
+```
+
+**Benefits of using `--all`:**
+
+- ✅ **Efficiency**: Process multiple environments in one command
+- ✅ **Consistency**: Same passphrase/secret handling across all environments
+- ✅ **Automation**: Perfect for CI/CD pipelines and scripts
+- ✅ **Safety**: Each environment is processed independently - failures in one don't stop others
+- ✅ **Reporting**: Comprehensive summary showing results for each environment
+
+**Key Features of `--all` Flag:**
+
+- **Sequential Processing**: Environments are processed one by one to avoid resource conflicts
+- **Independent Operations**: Failure in one environment doesn't stop processing of others
+- **Smart Passphrase Resolution**: Uses provided passphrase, environment-specific secrets, or prompts as needed
+- **Comprehensive Reporting**: Shows detailed results for each environment plus overall summary
+- **Safety Checks**: Validates compatibility with other flags (incompatible with `--environment` and `--interactive`)
+- **Flexible Configuration**: Works with all existing options like `--passphrase`, `--secret`, `--cwd`, and `--overwrite`
 
 ## Configuration
 
@@ -501,16 +547,18 @@ The test suite prioritizes **essential functionality** over comprehensive covera
 
 ### Test Coverage
 
-**Current Status**: ✅ 95 tests passing, ~7s execution time
+**Current Status**: ✅ 120 tests passing, ~11s execution time
 
-- **Core Tests**: 82 tests covering essential functionality
+- **Core Tests**: 104 tests covering essential functionality
   - Schema validation: 25 tests (command input validation)
   - File utilities: 39 tests (path manipulation, secret generation)
-  - Command logic: 18 tests (workflow patterns and decision logic)
+  - Command logic: 25 tests (workflow patterns and decision logic)
+  - All-flag functionality: 15 tests (batch operations, error handling)
 
-- **Integration Tests**: 13 tests covering real CLI usage
+- **Integration Tests**: 16 tests covering real CLI usage
   - Help/version commands
   - Create command functionality
+  - All-flag compatibility testing
   - Error handling scenarios
   - Environment validation
 
@@ -521,7 +569,8 @@ __tests__/
 ├── core/                    # Essential functionality tests
 │   ├── schemas.test.ts     # Input validation for all commands
 │   ├── file.test.ts        # File utilities and path manipulation
-│   └── commands.test.ts    # Command workflow logic patterns
+│   ├── commands.test.ts    # Command workflow logic patterns
+│   └── all-flag.test.ts    # Batch operations and --all flag functionality
 └── integration/            # End-to-end CLI tests
     └── cli.test.ts         # Real CLI execution scenarios
 ```

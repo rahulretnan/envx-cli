@@ -30,6 +30,7 @@ module.exports = {
     'no-duplicate-imports': 'error',
     'prefer-const': 'error',
     'no-var': 'error',
+    'no-unused-vars': 'off', // Use TypeScript version instead
 
     // Code style
     curly: ['error', 'all'],
@@ -46,6 +47,7 @@ module.exports = {
       rules: {
         '@typescript-eslint/no-explicit-any': 'off',
         '@typescript-eslint/no-unused-vars': 'off',
+        'no-unused-vars': 'off',
       },
     },
     {
