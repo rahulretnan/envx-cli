@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [1.2.2](https://github.com/rahulretnan/envx-cli/compare/v1.2.1...v1.2.2) (2025-07-27)
+
+
+### Bug Fixes
+
+* add tests for init command and refactor interactive command execution ([59b678e](https://github.com/rahulretnan/envx-cli/commit/59b678e28b1f102a6e453da317eb638dfd3592db))
+
 ## [1.2.1](https://github.com/rahulretnan/envx-cli/compare/v1.2.0...v1.2.1) (2025-07-27)
 
 
