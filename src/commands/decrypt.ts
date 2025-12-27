@@ -342,7 +342,12 @@ async function processSingleEnvironment(
   }
 
   // Confirm operation (skip for --all)
-  if (!rawOptions.interactive && conflictFiles.length === 0 && !isPartOfAll) {
+  if (
+    !rawOptions.interactive &&
+    conflictFiles.length === 0 &&
+    !isPartOfAll &&
+    !rawOptions.overwrite
+  ) {
     const confirm = await InteractiveUtils.confirmOperation(
       `Decrypt ${filesToProcess.length} file(s) for ${CliUtils.formatEnvironment(environment)}?`
     );

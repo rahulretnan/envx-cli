@@ -19,6 +19,10 @@ export const createEncryptCommand = (): Command => {
     .option('-c, --cwd <path>', 'Working directory path')
     .option('-i, --interactive', 'Interactive mode for selecting files')
     .option('-a, --all', 'Process all available environments')
+    .option(
+      '--overwrite',
+      'Overwrite existing encrypted files without confirmation'
+    )
     .action(async options => {
       try {
         await executeEncrypt(options);
@@ -281,7 +285,7 @@ async function processSingleEnvironment(
   }
 
   // Confirm operation (skip for --all)
-  if (!rawOptions.interactive && !isPartOfAll) {
+  if (!rawOptions.interactive && !isPartOfAll && !rawOptions.overwrite) {
     const confirm = await InteractiveUtils.confirmOperation(
       `Encrypt ${filesToProcess.length} file(s) for ${CliUtils.formatEnvironment(environment)}?`
     );

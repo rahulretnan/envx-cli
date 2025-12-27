@@ -17,6 +17,7 @@ export const encryptSchema = z
     cwd: z.string().optional(),
     secret: z.string().optional(),
     all: z.boolean().optional(),
+    overwrite: z.boolean().optional(),
   })
   .refine(
     data => {
@@ -160,6 +161,7 @@ export const validateEncryptOptions = (data: unknown) => {
         cwd: z.string().optional(),
         secret: z.string().optional(),
         all: z.boolean().optional(),
+        overwrite: z.boolean().optional(),
         environment: z.string().optional(),
       })
       .refine(data => !data.environment, {
