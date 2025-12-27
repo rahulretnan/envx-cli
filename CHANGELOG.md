@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [1.2.4](https://github.com/rahulretnan/envx-cli/compare/v1.2.3...v1.2.4) (2025-12-27)
+
+
+### Features
+
+* add overwrite option to encrypt and decrypt commands for non-interactive file processing ([4c3c69c](https://github.com/rahulretnan/envx-cli/commit/4c3c69cc234d1055f198aba20b8c4f3292e987e4))
+
 ## [1.2.3](https://github.com/rahulretnan/envx-cli/compare/v1.2.2...v1.2.3) (2025-07-27)
 
 
