@@ -29,6 +29,25 @@ describe('EnvxrcConfig Infrastructure', () => {
     });
   });
 
+  describe('DEFAULT_EXCLUDE_DIRS', () => {
+    it('should contain expected default directories', () => {
+      expect(FileUtils.DEFAULT_EXCLUDE_DIRS).toContain('node_modules');
+      expect(FileUtils.DEFAULT_EXCLUDE_DIRS).toContain('.git');
+      expect(FileUtils.DEFAULT_EXCLUDE_DIRS).toContain('dist');
+      expect(FileUtils.DEFAULT_EXCLUDE_DIRS).toContain('.next');
+      expect(FileUtils.DEFAULT_EXCLUDE_DIRS).toContain('.turbo');
+      expect(FileUtils.DEFAULT_EXCLUDE_DIRS).toContain('build');
+      expect(FileUtils.DEFAULT_EXCLUDE_DIRS).toContain('coverage');
+    });
+
+    it('should be an array of strings', () => {
+      expect(Array.isArray(FileUtils.DEFAULT_EXCLUDE_DIRS)).toBe(true);
+      FileUtils.DEFAULT_EXCLUDE_DIRS.forEach(dir => {
+        expect(typeof dir).toBe('string');
+      });
+    });
+  });
+
   describe('readEnvxrc', () => {
     it('should return empty object when file is missing', async () => {
       const config = await FileUtils.readEnvxrc(tempDir);
@@ -196,6 +215,31 @@ describe('EnvxrcConfig Infrastructure', () => {
     });
   });
 
+  describe('getExcludeDirs', () => {
+    it('should return defaults when no .envxrc exists', async () => {
+      const dirs = await FileUtils.getExcludeDirs(tempDir);
+      expect(dirs).toEqual(FileUtils.DEFAULT_EXCLUDE_DIRS);
+    });
+
+    it('should return dirs from .envxrc when present', async () => {
+      await FileUtils.writeEnvxrc(tempDir, {
+        excludeDirs: ['node_modules', 'custom_build'],
+      });
+
+      const dirs = await FileUtils.getExcludeDirs(tempDir);
+      expect(dirs).toEqual(['node_modules', 'custom_build']);
+    });
+
+    it('should return defaults when .envxrc has no excludeDirs field', async () => {
+      await FileUtils.writeEnvxrc(tempDir, {
+        ignore: ['example'],
+      });
+
+      const dirs = await FileUtils.getExcludeDirs(tempDir);
+      expect(dirs).toEqual(FileUtils.DEFAULT_EXCLUDE_DIRS);
+    });
+  });
+
   describe('findAllEnvironments with ignore patterns', () => {
     it('should filter out default patterns', async () => {
       // Create env files including template/example/sample
@@ -272,6 +316,91 @@ describe('EnvxrcConfig Infrastructure', () => {
       const envs = await FileUtils.findAllEnvironments(tempDir, []);
 
       expect(envs).toEqual(['alpha', 'middle', 'zebra']);
+    });
+  });
+
+  describe('directory exclusion in findAllEnvironments', () => {
+    it('should not find env files inside node_modules', async () => {
+      await fs.writeFile(path.join(tempDir, '.env.production'), '', 'utf-8');
+      await fs.ensureDir(path.join(tempDir, 'node_modules', 'some-pkg'));
+      await fs.writeFile(
+        path.join(tempDir, 'node_modules', 'some-pkg', '.env.production'),
+        '',
+        'utf-8'
+      );
+
+      const envs = await FileUtils.findAllEnvironments(tempDir, []);
+      expect(envs).toContain('production');
+
+      // The key check: only one environment found, not duplicated from node_modules
+      expect(envs.filter(e => e === 'production')).toHaveLength(1);
+    });
+
+    it('should not find env files inside dist directory', async () => {
+      await fs.writeFile(path.join(tempDir, '.env.staging'), '', 'utf-8');
+      await fs.ensureDir(path.join(tempDir, 'dist'));
+      await fs.writeFile(
+        path.join(tempDir, 'dist', '.env.staging'),
+        '',
+        'utf-8'
+      );
+      // dist only has staging, and it should be excluded
+      // root has staging, so we still see it
+      const envs = await FileUtils.findAllEnvironments(tempDir, []);
+      expect(envs).toContain('staging');
+    });
+
+    it('should respect custom excludeDirs from .envxrc', async () => {
+      await fs.writeFile(path.join(tempDir, '.env.production'), '', 'utf-8');
+      await fs.ensureDir(path.join(tempDir, 'custom_output'));
+      await fs.writeFile(
+        path.join(tempDir, 'custom_output', '.env.secret'),
+        '',
+        'utf-8'
+      );
+
+      // Without custom config, custom_output is not excluded
+      let envs = await FileUtils.findAllEnvironments(tempDir, []);
+      expect(envs).toContain('secret');
+
+      // With custom excludeDirs, custom_output is excluded
+      await FileUtils.writeEnvxrc(tempDir, {
+        excludeDirs: ['custom_output'],
+      });
+
+      envs = await FileUtils.findAllEnvironments(tempDir, []);
+      expect(envs).not.toContain('secret');
+      expect(envs).toContain('production');
+    });
+  });
+
+  describe('directory exclusion in findEnvFiles', () => {
+    it('should not find env files inside node_modules', async () => {
+      await fs.writeFile(path.join(tempDir, '.env.production'), '', 'utf-8');
+      await fs.ensureDir(path.join(tempDir, 'node_modules', 'some-pkg'));
+      await fs.writeFile(
+        path.join(tempDir, 'node_modules', 'some-pkg', '.env.production'),
+        '',
+        'utf-8'
+      );
+
+      const files = await FileUtils.findEnvFiles('production', tempDir);
+      expect(files).toHaveLength(1);
+      expect(files[0].path).toBe(path.join(tempDir, '.env.production'));
+    });
+
+    it('should not find env files inside dist directory', async () => {
+      await fs.writeFile(path.join(tempDir, '.env.staging'), '', 'utf-8');
+      await fs.ensureDir(path.join(tempDir, 'dist'));
+      await fs.writeFile(
+        path.join(tempDir, 'dist', '.env.staging'),
+        '',
+        'utf-8'
+      );
+
+      const files = await FileUtils.findEnvFiles('staging', tempDir);
+      expect(files).toHaveLength(1);
+      expect(files[0].path).toBe(path.join(tempDir, '.env.staging'));
     });
   });
 });

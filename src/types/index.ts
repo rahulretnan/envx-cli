@@ -82,6 +82,7 @@ export interface CommandResult {
 export interface EnvxrcConfig {
   ignore?: string[];
   environments?: string[];
+  excludeDirs?: string[];
 }
 
 export enum ExitCode {

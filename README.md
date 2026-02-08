@@ -425,9 +425,37 @@ Remove a pattern from the ignore list.
 envx config ignore remove test
 ```
 
+#### `envx config exclude list`
+
+List all excluded directories (from `.envxrc` or defaults). These directories are skipped during environment file discovery, which is useful in monorepos and projects with build artifacts.
+
+```bash
+envx config exclude list
+```
+
+#### `envx config exclude add <dir>`
+
+Add a directory to the exclusion list.
+
+```bash
+# Exclude Vercel build output
+envx config exclude add .vercel
+
+# Exclude a custom build directory
+envx config exclude add out
+```
+
+#### `envx config exclude remove <dir>`
+
+Remove a directory from the exclusion list.
+
+```bash
+envx config exclude remove build
+```
+
 #### `envx config reset`
 
-Reset the configuration to defaults, removing all custom ignore patterns.
+Reset the configuration to defaults, removing all custom ignore patterns and directory exclusions.
 
 ```bash
 envx config reset
@@ -453,16 +481,18 @@ EnvX supports a `.envxrc` JSON file in your project root for per-project configu
 ```json
 {
   "ignore": ["example", "sample", "template", "local-dev"],
-  "environments": ["development", "staging", "production"]
+  "environments": ["development", "staging", "production"],
+  "excludeDirs": ["node_modules", ".git", "dist", ".next", ".turbo", "build"]
 }
 ```
 
 **Fields:**
 
-| Field          | Type       | Description                                                                                                                                                                                                                           |
-| -------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `ignore`       | `string[]` | Patterns to exclude from environment discovery. Environments whose names match any pattern (case-insensitive) are filtered from `--all`, `list`, and `status` operations. Defaults to `["example", "sample", "template"]` if not set. |
-| `environments` | `string[]` | List of managed environments. Set during `envx init` based on your selection.                                                                                                                                                         |
+| Field          | Type       | Description                                                                                                                                                                                                                                         |
+| -------------- | ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ignore`       | `string[]` | Patterns to exclude from environment discovery. Environments whose names match any pattern (case-insensitive) are filtered from `--all`, `list`, and `status` operations. Defaults to `["example", "sample", "template"]` if not set.               |
+| `environments` | `string[]` | List of managed environments. Set during `envx init` based on your selection.                                                                                                                                                                       |
+| `excludeDirs`  | `string[]` | Directories to exclude from file discovery. Prevents scanning into build artifacts and dependency directories. Defaults to `["node_modules", ".git", "dist", ".next", ".turbo", ".output", ".nuxt", ".cache", "build", "coverage", ".svelte-kit"]`. |
 
 You can manage this file through the CLI:
 
@@ -475,6 +505,12 @@ envx config ignore add test
 
 # Remove a pattern
 envx config ignore remove sample
+
+# Add a directory exclusion
+envx config exclude add .vercel
+
+# Remove a directory exclusion
+envx config exclude remove build
 
 # Reset to defaults
 envx config reset
@@ -524,6 +560,25 @@ envx config ignore list
 ```
 
 **Bypass filtering:** Pass an explicit empty ignore list programmatically via `findAllEnvironments(cwd, [])` to include all environments.
+
+#### Directory Exclusion (Monorepo Support)
+
+EnvX automatically excludes build artifact and dependency directories from file discovery. This prevents `.env.*` files duplicated inside `node_modules`, `.next`, `dist`, `.turbo`, and other directories from appearing as spurious results.
+
+**Default excluded directories:** `node_modules`, `.git`, `dist`, `.next`, `.turbo`, `.output`, `.nuxt`, `.cache`, `build`, `coverage`, `.svelte-kit`
+
+**Customizing exclusions:**
+
+```bash
+# View current exclusions
+envx config exclude list
+
+# Add a directory
+envx config exclude add .vercel
+
+# Remove a directory (e.g., to scan build output)
+envx config exclude remove build
+```
 
 ### File Structure
 

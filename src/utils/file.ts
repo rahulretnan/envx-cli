@@ -13,6 +13,19 @@ import {
 
 export class FileUtils {
   static readonly DEFAULT_IGNORE_PATTERNS = ['example', 'sample', 'template'];
+  static readonly DEFAULT_EXCLUDE_DIRS = [
+    'node_modules',
+    '.git',
+    'dist',
+    '.next',
+    '.turbo',
+    '.output',
+    '.nuxt',
+    '.cache',
+    'build',
+    'coverage',
+    '.svelte-kit',
+  ];
 
   /**
    * Read .envxrc config file
@@ -85,6 +98,14 @@ export class FileUtils {
   }
 
   /**
+   * Get excluded directories from .envxrc or defaults
+   */
+  static async getExcludeDirs(cwd: string): Promise<string[]> {
+    const config = await this.readEnvxrc(cwd);
+    return config.excludeDirs ?? this.DEFAULT_EXCLUDE_DIRS;
+  }
+
+  /**
    * Find all .env files for a specific environment
    */
   static async findEnvFiles(
@@ -93,10 +114,12 @@ export class FileUtils {
   ): Promise<EnvFile[]> {
     const pattern = `**/.env.${environment}`;
     const encryptedPattern = `**/.env.${environment}.gpg`;
+    const excludeDirs = await this.getExcludeDirs(cwd);
+    const ignore = excludeDirs.map(dir => `**/${dir}/**`);
 
     const [envFiles, encryptedFiles] = await Promise.all([
-      fastGlob(pattern, { cwd, dot: true }),
-      fastGlob(encryptedPattern, { cwd, dot: true }),
+      fastGlob(pattern, { cwd, dot: true, ignore }),
+      fastGlob(encryptedPattern, { cwd, dot: true, ignore }),
     ]);
 
     const results: EnvFile[] = [];
@@ -136,7 +159,9 @@ export class FileUtils {
     ignorePatterns?: string[]
   ): Promise<string[]> {
     const pattern = '**/.env.*';
-    const files = await fastGlob(pattern, { cwd, dot: true });
+    const excludeDirs = await this.getExcludeDirs(cwd);
+    const ignore = excludeDirs.map(dir => `**/${dir}/**`);
+    const files = await fastGlob(pattern, { cwd, dot: true, ignore });
 
     const environments = new Set<string>();
 

@@ -376,6 +376,60 @@ describe('CLI Integration Tests', () => {
     });
   });
 
+  describe('Config Exclude Command', () => {
+    it('should show help for config exclude', () => {
+      const result = runCli('config exclude --help');
+
+      expect(result.code).toBe(0);
+      expect(result.stdout).toContain('exclude');
+      expect(result.stdout).toContain('list');
+      expect(result.stdout).toContain('add');
+      expect(result.stdout).toContain('remove');
+    });
+
+    it('should list default excluded directories', () => {
+      const result = runCli('config exclude list');
+
+      expect(result.code).toBe(0);
+      expect(result.stdout).toContain('node_modules');
+      expect(result.stdout).toContain('dist');
+      expect(result.stdout).toContain('.git');
+    });
+
+    it('should add an excluded directory', () => {
+      const addResult = runCli('config exclude add .vercel');
+      expect(addResult.code).toBe(0);
+      expect(addResult.stdout).toContain('Added');
+
+      const listResult = runCli('config exclude list');
+      expect(listResult.stdout).toContain('.vercel');
+    });
+
+    it('should remove an excluded directory', () => {
+      // First add the directory
+      runCli('config exclude add removeme');
+
+      const removeResult = runCli('config exclude remove removeme');
+      expect(removeResult.code).toBe(0);
+      expect(removeResult.stdout).toContain('Removed');
+    });
+
+    it('should warn when adding duplicate directory', () => {
+      runCli('config exclude add .duplicate');
+      const result = runCli('config exclude add .duplicate');
+
+      expect(result.code).toBe(0);
+      expect(result.stdout).toContain('already');
+    });
+
+    it('should warn when removing non-existent directory', () => {
+      const result = runCli('config exclude remove nonexistent');
+
+      expect(result.code).toBe(0);
+      expect(result.stdout).toContain('not in');
+    });
+  });
+
   describe('Dry Run Flag', () => {
     beforeEach(async () => {
       await fs.writeFile('.env.production', 'NODE_ENV=production\nSECRET=test');

@@ -113,6 +113,7 @@ export const envrcConfigSchema = z.record(z.string(), z.string());
 export const envxrcFileConfigSchema = z.object({
   ignore: z.array(z.string()).optional(),
   environments: z.array(z.string()).optional(),
+  excludeDirs: z.array(z.string()).optional(),
 });
 
 export const fileOperationSchema = z.object({

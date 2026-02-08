@@ -71,6 +71,55 @@ export const createConfigCommand = (): Command => {
       }
     });
 
+  const exclude = config
+    .command('exclude')
+    .description('Manage excluded directories');
+
+  exclude
+    .command('list')
+    .description('List excluded directories')
+    .option('-c, --cwd <path>', 'Working directory path')
+    .action(async options => {
+      try {
+        await executeExcludeList(options);
+      } catch (error) {
+        CliUtils.error(
+          `Config exclude list failed: ${error instanceof Error ? error.message : String(error)}`
+        );
+        process.exit(ExitCode.GENERAL_ERROR);
+      }
+    });
+
+  exclude
+    .command('add <dir>')
+    .description('Add a directory to the exclusion list')
+    .option('-c, --cwd <path>', 'Working directory path')
+    .action(async (dir, options) => {
+      try {
+        await executeExcludeAdd(dir, options);
+      } catch (error) {
+        CliUtils.error(
+          `Config exclude add failed: ${error instanceof Error ? error.message : String(error)}`
+        );
+        process.exit(ExitCode.GENERAL_ERROR);
+      }
+    });
+
+  exclude
+    .command('remove <dir>')
+    .description('Remove a directory from the exclusion list')
+    .option('-c, --cwd <path>', 'Working directory path')
+    .action(async (dir, options) => {
+      try {
+        await executeExcludeRemove(dir, options);
+      } catch (error) {
+        CliUtils.error(
+          `Config exclude remove failed: ${error instanceof Error ? error.message : String(error)}`
+        );
+        process.exit(ExitCode.GENERAL_ERROR);
+      }
+    });
+
   config
     .command('reset')
     .description('Reset .envxrc to default configuration')
@@ -102,6 +151,9 @@ async function executeConfigShow(options: any): Promise<void> {
     console.log(
       `Default ignore patterns: ${FileUtils.DEFAULT_IGNORE_PATTERNS.map(p => chalk.gray(p)).join(', ')}`
     );
+    console.log(
+      `Default excluded dirs: ${FileUtils.DEFAULT_EXCLUDE_DIRS.map(d => chalk.gray(d)).join(', ')}`
+    );
     return;
   }
 
@@ -111,6 +163,16 @@ async function executeConfigShow(options: any): Promise<void> {
     );
   } else {
     console.log('Ignore patterns: (none)');
+  }
+
+  if (config.excludeDirs && config.excludeDirs.length > 0) {
+    console.log(
+      `Excluded dirs: ${config.excludeDirs.map(d => chalk.yellow(d)).join(', ')}`
+    );
+  } else {
+    console.log(
+      `Excluded dirs: (defaults) ${FileUtils.DEFAULT_EXCLUDE_DIRS.map(d => chalk.gray(d)).join(', ')}`
+    );
   }
 
   if (config.environments && config.environments.length > 0) {
@@ -197,11 +259,84 @@ async function executeIgnoreRemove(
   }
 }
 
+async function executeExcludeList(options: any): Promise<void> {
+  const cwd = options.cwd || ExecUtils.getCurrentDir();
+
+  const dirs = await FileUtils.getExcludeDirs(cwd);
+
+  CliUtils.header('Excluded Directories');
+
+  if (dirs.length === 0) {
+    CliUtils.info('No excluded directories configured.');
+    return;
+  }
+
+  const config = await FileUtils.readEnvxrc(cwd);
+  const isDefault = !config.excludeDirs;
+
+  if (isDefault) {
+    CliUtils.info('Using default directories:');
+  }
+
+  for (const dir of dirs) {
+    console.log(`  • ${chalk.yellow(dir)}`);
+  }
+}
+
+async function executeExcludeAdd(dir: string, options: any): Promise<void> {
+  const cwd = options.cwd || ExecUtils.getCurrentDir();
+
+  const current = await FileUtils.getExcludeDirs(cwd);
+
+  if (current.some(d => d.toLowerCase() === dir.toLowerCase())) {
+    CliUtils.warning(`Directory '${dir}' is already in the exclusion list.`);
+    return;
+  }
+
+  const newExcludeDirs = [...current, dir];
+  const result = await FileUtils.mergeEnvxrc(cwd, {
+    excludeDirs: newExcludeDirs,
+  });
+
+  if (result.success) {
+    CliUtils.success(`Added '${dir}' to excluded directories.`);
+  } else {
+    CliUtils.error(`Failed to update config: ${result.message}`);
+  }
+}
+
+async function executeExcludeRemove(dir: string, options: any): Promise<void> {
+  const cwd = options.cwd || ExecUtils.getCurrentDir();
+
+  const current = await FileUtils.getExcludeDirs(cwd);
+
+  const index = current.findIndex(d => d.toLowerCase() === dir.toLowerCase());
+
+  if (index === -1) {
+    CliUtils.warning(`Directory '${dir}' is not in the exclusion list.`);
+    return;
+  }
+
+  const newExcludeDirs = [...current];
+  newExcludeDirs.splice(index, 1);
+
+  const result = await FileUtils.mergeEnvxrc(cwd, {
+    excludeDirs: newExcludeDirs,
+  });
+
+  if (result.success) {
+    CliUtils.success(`Removed '${dir}' from excluded directories.`);
+  } else {
+    CliUtils.error(`Failed to update config: ${result.message}`);
+  }
+}
+
 async function executeConfigReset(options: any): Promise<void> {
   const cwd = options.cwd || ExecUtils.getCurrentDir();
 
   const result = await FileUtils.writeEnvxrc(cwd, {
     ignore: [...FileUtils.DEFAULT_IGNORE_PATTERNS],
+    excludeDirs: [...FileUtils.DEFAULT_EXCLUDE_DIRS],
   });
 
   if (result.success) {
