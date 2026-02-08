@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [1.3.1](https://github.com/rahulretnan/envx-cli/compare/v1.3.0...v1.3.1) (2026-02-08)
+
+
+### Features
+
+* exclude node_modules and build dirs from environment file discovery ([d1056f8](https://github.com/rahulretnan/envx-cli/commit/d1056f81e4cfcd59c49fcff0f0b28aa3653437e3))
+
 # [1.3.0](https://github.com/rahulretnan/envx-cli/compare/v1.2.4...v1.3.0) (2026-02-08)
 
 
