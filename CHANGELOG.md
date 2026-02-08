@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+# [1.3.0](https://github.com/rahulretnan/envx-cli/compare/v1.2.4...v1.3.0) (2026-02-08)
+
+
+### Features
+
+* add .envxrc project config, envx config command, dry-run mode, environment filtering, and enhanced init flow ([98f1f33](https://github.com/rahulretnan/envx-cli/commit/98f1f33d60690fdce1c0c16de97961cc890dedab))
+
 ## [1.2.4](https://github.com/rahulretnan/envx-cli/compare/v1.2.3...v1.2.4) (2025-12-27)
 
 
