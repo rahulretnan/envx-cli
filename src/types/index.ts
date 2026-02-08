@@ -78,3 +78,17 @@ export interface CommandResult {
   data?: any;
   errors?: string[];
 }
+
+export interface EnvxrcConfig {
+  ignore?: string[];
+  environments?: string[];
+}
+
+export enum ExitCode {
+  SUCCESS = 0,
+  GENERAL_ERROR = 1,
+  INVALID_ARGS = 2,
+  FILE_ERROR = 3,
+  GPG_ERROR = 4,
+  USER_CANCELLED = 5,
+}

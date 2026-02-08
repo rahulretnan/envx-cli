@@ -2,6 +2,7 @@ import chalk from 'chalk';
 import { Command } from 'commander';
 import path from 'path';
 import { validateInteractiveOptions } from '../schemas';
+import { ExitCode } from '../types';
 import { CliUtils, ExecUtils } from '../utils/exec';
 import { FileUtils } from '../utils/file';
 import { InteractiveUtils } from '../utils/interactive';
@@ -24,7 +25,7 @@ export const createInteractiveCommand = (): Command => {
         CliUtils.error(
           `Interactive setup failed: ${error instanceof Error ? error.message : String(error)}`
         );
-        process.exit(1);
+        process.exit(ExitCode.GENERAL_ERROR);
       }
     });
 
@@ -126,7 +127,7 @@ export async function executeInteractive(rawOptions: any): Promise<void> {
       if (writeResult.error) {
         console.log(chalk.red(`  • ${writeResult.error.message}`));
       }
-      process.exit(1);
+      process.exit(ExitCode.GENERAL_ERROR);
     }
   } catch (error) {
     if (error instanceof Error && error.message === 'Setup cancelled by user') {

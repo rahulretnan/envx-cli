@@ -270,6 +270,7 @@ describe('FileUtils Core Operations', () => {
       expect(content).toContain('!.env.*.gpg');
       expect(content).toContain('# EnvX secrets');
       expect(content).toContain('.envrc');
+      expect(content).toContain('.envxrc');
     });
 
     it('should append to existing .gitignore', async () => {
@@ -315,7 +316,7 @@ describe('FileUtils Core Operations', () => {
 
     it('should add only environment patterns when secrets exist', async () => {
       const gitignorePath = path.join(tempDir, '.gitignore');
-      const existingContent = '# Existing\n.envrc';
+      const existingContent = '# Existing\n.envrc\n.envxrc';
       await fs.writeFile(gitignorePath, existingContent, 'utf-8');
 
       const result = await FileUtils.updateGitignore(tempDir);
@@ -331,16 +332,17 @@ describe('FileUtils Core Operations', () => {
       expect(content).toContain('!.env.example');
       expect(content).toContain('!.env.*.gpg');
       expect(content).toContain('.envrc');
+      expect(content).toContain('.envxrc');
 
       // Should not duplicate .envrc or add another EnvX secrets section
-      expect((content.match(/\.envrc/g) || []).length).toBe(1);
+      expect((content.match(/\.envrc\b/g) || []).length).toBe(1);
       expect((content.match(/# EnvX secrets/g) || []).length).toBe(0);
     });
 
     it('should not update when all patterns exist', async () => {
       const gitignorePath = path.join(tempDir, '.gitignore');
       const existingContent =
-        'node_modules/\n.env.*\n!.env.example\n!.env.*.gpg\n.envrc';
+        'node_modules/\n.env.*\n!.env.example\n!.env.*.gpg\n.envrc\n.envxrc';
       await fs.writeFile(gitignorePath, existingContent, 'utf-8');
 
       const result = await FileUtils.updateGitignore(tempDir);

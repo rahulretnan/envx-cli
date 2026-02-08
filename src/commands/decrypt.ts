@@ -1,6 +1,7 @@
 import chalk from 'chalk';
 import { Command } from 'commander';
 import { validateDecryptOptions } from '../schemas';
+import { ExitCode } from '../types';
 import { CliUtils, ExecUtils } from '../utils/exec';
 import { FileUtils } from '../utils/file';
 import { InteractiveUtils } from '../utils/interactive';
@@ -23,6 +24,7 @@ export const createDecryptCommand = (): Command => {
       '--overwrite',
       'Overwrite existing decrypted files without confirmation'
     )
+    .option('--dry-run', 'Show what would happen without making changes')
     .action(async options => {
       try {
         await executeDecrypt(options);
@@ -30,7 +32,7 @@ export const createDecryptCommand = (): Command => {
         CliUtils.error(
           `Decryption failed: ${error instanceof Error ? error.message : String(error)}`
         );
-        process.exit(1);
+        process.exit(ExitCode.GENERAL_ERROR);
       }
     });
 
@@ -59,7 +61,7 @@ async function executeDecrypt(rawOptions: any): Promise<void> {
       'GPG is not available. Please install GPG to use decryption features.'
     );
     InteractiveUtils.displayPrerequisites();
-    process.exit(1);
+    process.exit(ExitCode.GPG_ERROR);
   }
 
   // Find all available environments if not specified
@@ -206,7 +208,7 @@ async function processAllEnvironments(
   }
 
   if (totalErrors > 0) {
-    process.exit(1);
+    process.exit(ExitCode.GENERAL_ERROR);
   }
 }
 
@@ -290,6 +292,19 @@ async function processSingleEnvironment(
     CliUtils.info(
       `Found ${encryptedFiles.length} encrypted file(s) to decrypt`
     );
+  }
+
+  // Dry-run: show summary and return
+  if (rawOptions.dryRun) {
+    console.log();
+    CliUtils.info('Dry run — no files will be modified.');
+    CliUtils.info(`Passphrase source: ${passphrase ? 'provided' : '.envrc'}`);
+    for (const file of encryptedFiles) {
+      const encPath = FileUtils.getEncryptedPath(file.path);
+      const rel = FileUtils.getRelativePath(encPath, cwd);
+      console.log(`  would decrypt: ${chalk.cyan(rel)}`);
+    }
+    return { successCount: encryptedFiles.length, errorCount: 0 };
   }
 
   // Interactive file selection if requested (skip for --all)
@@ -465,7 +480,7 @@ async function processSingleEnvironment(
     }
 
     if (errorCount > 0) {
-      process.exit(1);
+      process.exit(ExitCode.GENERAL_ERROR);
     }
   }
 

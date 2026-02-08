@@ -6,11 +6,13 @@ import path from 'path';
 import { createCopyCommand } from './commands/copy';
 import { createCreateCommand } from './commands/create';
 import { createDecryptCommand } from './commands/decrypt';
-import { createEncryptCommand } from './commands/encrypt';
+import { createConfigCommand } from './commands/config';
+import { createEncryptCommand, encryptEnvironment } from './commands/encrypt';
 import {
   createInteractiveCommand,
   showQuickStart,
 } from './commands/interactive';
+import { ExitCode } from './types';
 import { CliUtils, ExecUtils } from './utils/exec';
 import { FileUtils } from './utils/file';
 import { InteractiveUtils } from './utils/interactive';
@@ -50,6 +52,7 @@ async function createProgram(): Promise<Command> {
   program.addCommand(createCreateCommand());
   program.addCommand(createCopyCommand());
   program.addCommand(createInteractiveCommand());
+  program.addCommand(createConfigCommand());
 
   // List command to show environment status
   program
@@ -64,7 +67,7 @@ async function createProgram(): Promise<Command> {
         CliUtils.error(
           `List failed: ${error instanceof Error ? error.message : String(error)}`
         );
-        process.exit(1);
+        process.exit(ExitCode.GENERAL_ERROR);
       }
     });
 
@@ -80,7 +83,7 @@ async function createProgram(): Promise<Command> {
         CliUtils.error(
           `Status check failed: ${error instanceof Error ? error.message : String(error)}`
         );
-        process.exit(1);
+        process.exit(ExitCode.GENERAL_ERROR);
       }
     });
 
@@ -96,7 +99,7 @@ async function createProgram(): Promise<Command> {
         CliUtils.error(
           `Initialization failed: ${error instanceof Error ? error.message : String(error)}`
         );
-        process.exit(1);
+        process.exit(ExitCode.GENERAL_ERROR);
       }
     });
 
@@ -272,16 +275,31 @@ async function executeInit(options: any): Promise<void> {
   console.log(`Directory: ${CliUtils.formatPath(cwd, process.cwd())}`);
   console.log();
 
-  // Check if already initialized
-  const existingEnvironments = await FileUtils.findAllEnvironments(cwd);
+  // Check prerequisites
+  if (!ExecUtils.isGpgAvailable()) {
+    CliUtils.error('GPG is required but not found.');
+    InteractiveUtils.displayPrerequisites();
+    return;
+  }
+
+  CliUtils.success('GPG is available');
+
+  // Discover environments with default ignore filtering
+  const filteredEnvironments = await FileUtils.findAllEnvironments(cwd);
+  // Discover ALL environments (no filter) to detect what's being ignored
+  const allEnvironments = await FileUtils.findAllEnvironments(cwd, []);
+  const ignoredEnvironments = allEnvironments.filter(
+    env => !filteredEnvironments.includes(env)
+  );
+
   const envrcExists = await FileUtils.fileExists(path.join(cwd, '.envrc'));
 
-  if (existingEnvironments.length > 0 || envrcExists) {
+  if (filteredEnvironments.length > 0 || envrcExists) {
     CliUtils.warning('EnvX appears to already be set up in this project.');
 
-    if (existingEnvironments.length > 0) {
+    if (filteredEnvironments.length > 0) {
       console.log(
-        `Found environments: ${existingEnvironments.map(env => CliUtils.formatEnvironment(env)).join(', ')}`
+        `Found environments: ${filteredEnvironments.map(env => CliUtils.formatEnvironment(env)).join(', ')}`
       );
     }
 
@@ -300,14 +318,49 @@ async function executeInit(options: any): Promise<void> {
     }
   }
 
-  // Check prerequisites
-  if (!ExecUtils.isGpgAvailable()) {
-    CliUtils.error('GPG is required but not found.');
-    InteractiveUtils.displayPrerequisites();
-    return;
+  // Inform about auto-ignored environments
+  if (ignoredEnvironments.length > 0) {
+    CliUtils.info(
+      `Auto-ignoring non-secret environments: ${ignoredEnvironments.map(env => chalk.gray(env)).join(', ')}`
+    );
   }
 
-  CliUtils.success('GPG is available');
+  // Let user select which discovered envs to manage
+  let selectedEnvironments: string[] = [];
+  if (filteredEnvironments.length > 0) {
+    selectedEnvironments = await InteractiveUtils.selectMultipleEnvironments(
+      filteredEnvironments,
+      'Select environments to manage:',
+      filteredEnvironments // pre-check all discovered envs
+    );
+
+    // Offer to ignore non-selected environments
+    const notSelected = filteredEnvironments.filter(
+      env => !selectedEnvironments.includes(env)
+    );
+    if (notSelected.length > 0) {
+      const ignoreThese = await InteractiveUtils.confirmOperation(
+        `Ignore ${notSelected.map(e => chalk.magenta(e)).join(', ')} in future operations?`,
+        true
+      );
+
+      if (ignoreThese) {
+        const currentIgnore = await FileUtils.getIgnorePatterns(cwd);
+        const newIgnore = Array.from(
+          new Set([...currentIgnore, ...notSelected])
+        );
+        await FileUtils.mergeEnvxrc(cwd, { ignore: newIgnore });
+        CliUtils.success(`Added ${notSelected.join(', ')} to ignore list`);
+      }
+    }
+  }
+
+  // Save selected environments to .envxrc
+  if (selectedEnvironments.length > 0) {
+    await FileUtils.mergeEnvxrc(cwd, {
+      environments: selectedEnvironments,
+    });
+  }
 
   // Update .gitignore with smart EnvX patterns
   CliUtils.info('Setting up .gitignore...');
@@ -322,23 +375,59 @@ async function executeInit(options: any): Promise<void> {
   // Show quick start guide
   await showQuickStart(cwd);
 
-  // Offer to start setup
+  // Offer to start interactive secret setup
   const startSetup = await InteractiveUtils.confirmOperation(
-    'Would you like to start the interactive setup now?'
+    'Would you like to set up encryption secrets now?'
   );
 
   if (startSetup) {
     console.log();
     CliUtils.info('Starting interactive setup...');
 
-    // Import and call the interactive command's execute function directly
     const { executeInteractive } = await import('./commands/interactive');
     await executeInteractive({ cwd: options.cwd });
+
+    // After secrets configured, offer to encrypt
+    if (selectedEnvironments.length > 0) {
+      const doEncrypt = await InteractiveUtils.confirmOperation(
+        'Encrypt your environment files now?',
+        true
+      );
+
+      if (doEncrypt) {
+        console.log();
+        CliUtils.info('Encrypting environment files...');
+
+        for (const env of selectedEnvironments) {
+          try {
+            const result = await encryptEnvironment(env, cwd);
+            if (result.successCount > 0) {
+              CliUtils.success(
+                `Encrypted ${result.successCount} file(s) for ${chalk.magenta(env)}`
+              );
+            }
+            if (result.errorCount > 0) {
+              CliUtils.warning(
+                `Failed to encrypt ${result.errorCount} file(s) for ${chalk.magenta(env)}`
+              );
+            }
+          } catch (error) {
+            CliUtils.warning(
+              `Could not encrypt ${env}: ${error instanceof Error ? error.message : String(error)}`
+            );
+          }
+        }
+      }
+    }
   } else {
     console.log();
     CliUtils.info('You can run the setup later with:');
     console.log(chalk.cyan('  envx interactive'));
   }
+
+  // Final summary
+  console.log();
+  CliUtils.success('EnvX initialization complete!');
 }
 
 // Error handling
@@ -347,12 +436,12 @@ process.on('uncaughtException', error => {
   if (process.env.NODE_ENV === 'development') {
     console.error(error.stack);
   }
-  process.exit(1);
+  process.exit(ExitCode.GENERAL_ERROR);
 });
 
 process.on('unhandledRejection', (reason, promise) => {
   CliUtils.error(`Unhandled rejection at: ${promise}, reason: ${reason}`);
-  process.exit(1);
+  process.exit(ExitCode.GENERAL_ERROR);
 });
 
 // Main execution
@@ -371,7 +460,7 @@ async function main() {
     CliUtils.error(
       `Command failed: ${error instanceof Error ? error.message : String(error)}`
     );
-    process.exit(1);
+    process.exit(ExitCode.GENERAL_ERROR);
   }
 }
 

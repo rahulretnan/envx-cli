@@ -3,9 +3,87 @@ import fastGlob from 'fast-glob';
 import fs from 'fs-extra';
 import { replace } from 'lodash';
 import path from 'path';
-import { EnvFile, EnvrcConfig, FileOperationResult } from '../types';
+import { envxrcFileConfigSchema } from '../schemas';
+import {
+  EnvFile,
+  EnvrcConfig,
+  EnvxrcConfig,
+  FileOperationResult,
+} from '../types';
 
 export class FileUtils {
+  static readonly DEFAULT_IGNORE_PATTERNS = ['example', 'sample', 'template'];
+
+  /**
+   * Read .envxrc config file
+   */
+  static async readEnvxrc(cwd: string): Promise<EnvxrcConfig> {
+    const envxrcPath = path.join(cwd, '.envxrc');
+
+    if (!(await this.fileExists(envxrcPath))) {
+      return {};
+    }
+
+    try {
+      const content = await fs.readFile(envxrcPath, 'utf-8');
+      const parsed = JSON.parse(content);
+      return envxrcFileConfigSchema.parse(parsed);
+    } catch {
+      return {};
+    }
+  }
+
+  /**
+   * Write .envxrc config file
+   */
+  static async writeEnvxrc(
+    cwd: string,
+    config: EnvxrcConfig
+  ): Promise<FileOperationResult> {
+    const envxrcPath = path.join(cwd, '.envxrc');
+
+    try {
+      await fs.writeFile(
+        envxrcPath,
+        `${JSON.stringify(config, null, 2)}\n`,
+        'utf-8'
+      );
+
+      return {
+        success: true,
+        message: 'Successfully wrote .envxrc file',
+        filePath: envxrcPath,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: `Failed to write .envxrc file: ${error}`,
+        filePath: envxrcPath,
+        error: error as Error,
+      };
+    }
+  }
+
+  /**
+   * Merge partial config into existing .envxrc
+   */
+  static async mergeEnvxrc(
+    cwd: string,
+    partial: Partial<EnvxrcConfig>
+  ): Promise<FileOperationResult> {
+    const existing = await this.readEnvxrc(cwd);
+    const merged: EnvxrcConfig = { ...existing, ...partial };
+    return this.writeEnvxrc(cwd, merged);
+  }
+
+  /**
+   * Get ignore patterns from .envxrc or defaults
+   */
+  static async getIgnorePatterns(cwd: string): Promise<string[]> {
+    const config = await this.readEnvxrc(cwd);
+    return config.ignore ?? this.DEFAULT_IGNORE_PATTERNS;
+  }
+
   /**
    * Find all .env files for a specific environment
    */
@@ -49,8 +127,14 @@ export class FileUtils {
 
   /**
    * Find all environments in the project
+   * @param ignorePatterns - patterns to filter out (case-insensitive exact match).
+   *   undefined = load from .envxrc or use defaults.
+   *   [] = no filtering (escape hatch).
    */
-  static async findAllEnvironments(cwd: string): Promise<string[]> {
+  static async findAllEnvironments(
+    cwd: string,
+    ignorePatterns?: string[]
+  ): Promise<string[]> {
     const pattern = '**/.env.*';
     const files = await fastGlob(pattern, { cwd, dot: true });
 
@@ -64,7 +148,18 @@ export class FileUtils {
       }
     }
 
-    return Array.from(environments).sort();
+    // Resolve ignore patterns
+    const patterns =
+      ignorePatterns !== undefined
+        ? ignorePatterns
+        : await this.getIgnorePatterns(cwd);
+
+    // Filter out ignored environments
+    const filtered = Array.from(environments).filter(
+      env => !patterns.some(p => p.toLowerCase() === env.toLowerCase())
+    );
+
+    return filtered.sort();
   }
 
   /**
@@ -319,7 +414,7 @@ export class FileUtils {
     const gitignorePath = path.join(cwd, '.gitignore');
 
     const envPatterns = ['.env.*', '!.env.example', '!.env.*.gpg'];
-    const secretPatterns = ['.envrc'];
+    const secretPatterns = ['.envrc', '.envxrc'];
 
     try {
       let existingContent = '';

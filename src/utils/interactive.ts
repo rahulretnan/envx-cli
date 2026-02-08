@@ -38,17 +38,24 @@ export class InteractiveUtils {
    */
   static async selectMultipleEnvironments(
     environments: string[],
-    message: string = 'Select environments:'
+    message: string = 'Select environments:',
+    defaultSelected?: string[]
   ): Promise<string[]> {
     if (environments.length === 0) {
       throw new Error('No environments found');
     }
 
+    const choices = environments.map(env => ({
+      name: env,
+      value: env,
+      checked: defaultSelected ? defaultSelected.includes(env) : false,
+    }));
+
     const { selectedEnvironments } = await inquirer.prompt({
       type: 'checkbox',
       name: 'selectedEnvironments',
       message,
-      choices: environments,
+      choices,
       validate: (input: any) => {
         if (input.length === 0) {
           return 'Please select at least one environment';

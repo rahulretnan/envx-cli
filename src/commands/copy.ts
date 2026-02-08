@@ -2,6 +2,7 @@ import chalk from 'chalk';
 import { Command } from 'commander';
 import path from 'path';
 import { validateCopyOptions } from '../schemas';
+import { ExitCode } from '../types';
 import { CliUtils, ExecUtils } from '../utils/exec';
 import { FileUtils } from '../utils/file';
 import { InteractiveUtils } from '../utils/interactive';
@@ -27,7 +28,7 @@ export const createCopyCommand = (): Command => {
         CliUtils.error(
           `Copy failed: ${error instanceof Error ? error.message : String(error)}`
         );
-        process.exit(1);
+        process.exit(ExitCode.GENERAL_ERROR);
       }
     });
 
@@ -175,7 +176,7 @@ async function processSingleEnvironmentInSourceDirectory(
     false
   );
   if (!result.success) {
-    process.exit(1);
+    process.exit(ExitCode.GENERAL_ERROR);
   }
 }
 
@@ -290,7 +291,7 @@ async function processSingleEnvironment(
       if (!isPartOfAll) {
         CliUtils.error(message);
         InteractiveUtils.displayPrerequisites();
-        process.exit(1);
+        process.exit(ExitCode.GPG_ERROR);
       } else {
         throw new Error(message);
       }
@@ -385,7 +386,7 @@ async function processSingleEnvironment(
           });
         }
         if (!isPartOfAll) {
-          process.exit(1);
+          process.exit(ExitCode.GENERAL_ERROR);
         } else {
           return { success: false, error: decryptResult.message };
         }
@@ -427,7 +428,7 @@ async function processSingleEnvironment(
           });
         }
         if (!isPartOfAll) {
-          process.exit(1);
+          process.exit(ExitCode.GENERAL_ERROR);
         } else {
           return { success: false, error: copyResult.message };
         }
@@ -437,7 +438,7 @@ async function processSingleEnvironment(
         error instanceof Error ? error.message : String(error);
       CliUtils.error(`Error copying file: ${errorMessage}`);
       if (!isPartOfAll) {
-        process.exit(1);
+        process.exit(ExitCode.GENERAL_ERROR);
       } else {
         return { success: false, error: errorMessage };
       }
@@ -645,6 +646,6 @@ async function processAllDirectories(
   }
 
   if (totalErrors > 0) {
-    process.exit(1);
+    process.exit(ExitCode.GENERAL_ERROR);
   }
 }

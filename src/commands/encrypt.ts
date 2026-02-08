@@ -1,6 +1,7 @@
 import chalk from 'chalk';
 import { Command } from 'commander';
 import { validateEncryptOptions } from '../schemas';
+import { ExitCode } from '../types';
 import { CliUtils, ExecUtils } from '../utils/exec';
 import { FileUtils } from '../utils/file';
 import { InteractiveUtils } from '../utils/interactive';
@@ -23,6 +24,7 @@ export const createEncryptCommand = (): Command => {
       '--overwrite',
       'Overwrite existing encrypted files without confirmation'
     )
+    .option('--dry-run', 'Show what would happen without making changes')
     .action(async options => {
       try {
         await executeEncrypt(options);
@@ -30,7 +32,7 @@ export const createEncryptCommand = (): Command => {
         CliUtils.error(
           `Encryption failed: ${error instanceof Error ? error.message : String(error)}`
         );
-        process.exit(1);
+        process.exit(ExitCode.GENERAL_ERROR);
       }
     });
 
@@ -59,7 +61,7 @@ async function executeEncrypt(rawOptions: any): Promise<void> {
       'GPG is not available. Please install GPG to use encryption features.'
     );
     InteractiveUtils.displayPrerequisites();
-    process.exit(1);
+    process.exit(ExitCode.GPG_ERROR);
   }
 
   // Find all available environments if not specified
@@ -189,7 +191,7 @@ async function processAllEnvironments(
   }
 
   if (totalErrors > 0) {
-    process.exit(1);
+    process.exit(ExitCode.GENERAL_ERROR);
   }
 }
 
@@ -265,6 +267,18 @@ async function processSingleEnvironment(
     });
   } else {
     CliUtils.info(`Found ${unencryptedFiles.length} file(s) to encrypt`);
+  }
+
+  // Dry-run: show summary and return
+  if (rawOptions.dryRun) {
+    console.log();
+    CliUtils.info('Dry run — no files will be modified.');
+    CliUtils.info(`Passphrase source: ${passphrase ? 'provided' : '.envrc'}`);
+    for (const file of unencryptedFiles) {
+      const rel = FileUtils.getRelativePath(file.path, cwd);
+      console.log(`  would encrypt: ${chalk.cyan(rel)}`);
+    }
+    return { successCount: unencryptedFiles.length, errorCount: 0 };
   }
 
   // Interactive file selection if requested (skip for --all)
@@ -408,9 +422,25 @@ async function processSingleEnvironment(
     }
 
     if (errorCount > 0) {
-      process.exit(1);
+      process.exit(ExitCode.GENERAL_ERROR);
     }
   }
 
   return { successCount, errorCount };
+}
+
+/**
+ * Programmatic helper for encrypting a single environment.
+ * Used by the init command to offer post-setup encryption.
+ */
+export async function encryptEnvironment(
+  environment: string,
+  cwd: string,
+  passphrase?: string
+): Promise<{ successCount: number; errorCount: number }> {
+  const options: any = { overwrite: true };
+  if (passphrase) {
+    options.passphrase = passphrase;
+  }
+  return processSingleEnvironment(options, environment, cwd, true);
 }

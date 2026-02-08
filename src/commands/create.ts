@@ -2,6 +2,7 @@ import chalk from 'chalk';
 import { Command } from 'commander';
 import path from 'path';
 import { validateCreateOptions } from '../schemas';
+import { ExitCode } from '../types';
 import { CliUtils, ExecUtils } from '../utils/exec';
 import { FileUtils } from '../utils/file';
 import { InteractiveUtils } from '../utils/interactive';
@@ -29,7 +30,7 @@ export const createCreateCommand = (): Command => {
         CliUtils.error(
           `File creation failed: ${error instanceof Error ? error.message : String(error)}`
         );
-        process.exit(1);
+        process.exit(ExitCode.GENERAL_ERROR);
       }
     });
 
@@ -430,6 +431,6 @@ async function executeInteractiveCreate(
   }
 
   if (errorCount > 0) {
-    process.exit(1);
+    process.exit(ExitCode.GENERAL_ERROR);
   }
 }

@@ -299,4 +299,160 @@ describe('CLI Integration Tests', () => {
       }
     });
   });
+
+  describe('Config Command', () => {
+    it('should show help for config command', () => {
+      const result = runCli('config --help');
+
+      expect(result.code).toBe(0);
+      expect(result.stdout).toContain('config');
+      expect(result.stdout).toContain('show');
+      expect(result.stdout).toContain('ignore');
+      expect(result.stdout).toContain('reset');
+    });
+
+    it('should show config with no .envxrc', () => {
+      const result = runCli('config show');
+
+      expect(result.code).toBe(0);
+      expect(result.stdout).toContain('default');
+    });
+
+    it('should list ignore patterns', () => {
+      const result = runCli('config ignore list');
+
+      expect(result.code).toBe(0);
+      expect(result.stdout).toContain('example');
+      expect(result.stdout).toContain('sample');
+      expect(result.stdout).toContain('template');
+    });
+
+    it('should add an ignore pattern', () => {
+      const addResult = runCli('config ignore add test-env');
+      expect(addResult.code).toBe(0);
+      expect(addResult.stdout).toContain('Added');
+
+      const listResult = runCli('config ignore list');
+      expect(listResult.stdout).toContain('test-env');
+    });
+
+    it('should remove an ignore pattern', () => {
+      // First add the pattern
+      runCli('config ignore add removeme');
+
+      const removeResult = runCli('config ignore remove removeme');
+      expect(removeResult.code).toBe(0);
+      expect(removeResult.stdout).toContain('Removed');
+    });
+
+    it('should warn when adding duplicate pattern', () => {
+      runCli('config ignore add duplicate');
+      const result = runCli('config ignore add duplicate');
+
+      expect(result.code).toBe(0);
+      expect(result.stdout).toContain('already');
+    });
+
+    it('should warn when removing non-existent pattern', () => {
+      const result = runCli('config ignore remove nonexistent');
+
+      expect(result.code).toBe(0);
+      expect(result.stdout).toContain('not in');
+    });
+
+    it('should reset config to defaults', () => {
+      // Add custom pattern first
+      runCli('config ignore add custom');
+
+      const resetResult = runCli('config reset');
+      expect(resetResult.code).toBe(0);
+      expect(resetResult.stdout).toContain('Reset');
+
+      // Verify defaults are restored
+      const listResult = runCli('config ignore list');
+      expect(listResult.stdout).toContain('example');
+      expect(listResult.stdout).toContain('sample');
+      expect(listResult.stdout).toContain('template');
+    });
+  });
+
+  describe('Dry Run Flag', () => {
+    beforeEach(async () => {
+      await fs.writeFile('.env.production', 'NODE_ENV=production\nSECRET=test');
+    });
+
+    it('should show --dry-run in encrypt help', () => {
+      const result = runCli('encrypt --help');
+
+      expect(result.code).toBe(0);
+      expect(result.stdout).toContain('--dry-run');
+    });
+
+    it('should show --dry-run in decrypt help', () => {
+      const result = runCli('decrypt --help');
+
+      expect(result.code).toBe(0);
+      expect(result.stdout).toContain('--dry-run');
+    });
+
+    it('should not create encrypted files in dry-run mode', async () => {
+      const result = runCli('encrypt -e production -p testpass123 --dry-run');
+
+      if (result.code === 0) {
+        expect(result.stdout).toContain('Dry run');
+        expect(result.stdout).toContain('would encrypt');
+        // Ensure no .gpg file was created
+        expect(await fs.pathExists('.env.production.gpg')).toBe(false);
+      }
+    });
+  });
+
+  describe('Copy Command --all', () => {
+    it('should show --all in copy help', () => {
+      const result = runCli('copy --help');
+
+      expect(result.code).toBe(0);
+      expect(result.stdout).toContain('--all');
+    });
+
+    it('should require environment with --all on copy', () => {
+      const result = runCli('copy --all');
+
+      expect(result.code).not.toBe(0);
+    });
+  });
+
+  describe('Environment Filtering', () => {
+    beforeEach(async () => {
+      await fs.writeFile('.env.production', 'NODE_ENV=production');
+      await fs.writeFile('.env.staging', 'NODE_ENV=staging');
+      await fs.writeFile('.env.example', '# Example');
+      await fs.writeFile('.env.sample', '# Sample');
+      await fs.writeFile('.env.template', '# Template');
+    });
+
+    it('should filter out example/sample/template from list', () => {
+      const result = runCli('list');
+
+      if (result.code === 0) {
+        expect(result.stdout).toContain('production');
+        expect(result.stdout).toContain('staging');
+        expect(result.stdout).not.toContain('example');
+        expect(result.stdout).not.toContain('sample');
+        expect(result.stdout).not.toContain('template');
+      }
+    });
+
+    it('should filter out example/sample/template from status', () => {
+      const result = runCli('status');
+
+      if (result.code === 0) {
+        expect(result.stdout).toContain('production');
+        expect(result.stdout).toContain('staging');
+        expect(result.stdout).not.toContain('example');
+        expect(result.stdout).not.toContain('sample');
+        expect(result.stdout).not.toContain('template');
+      }
+    });
+  });
 });

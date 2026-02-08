@@ -110,6 +110,11 @@ export const stageSecretSchema = z.object({
 
 export const envrcConfigSchema = z.record(z.string(), z.string());
 
+export const envxrcFileConfigSchema = z.object({
+  ignore: z.array(z.string()).optional(),
+  environments: z.array(z.string()).optional(),
+});
+
 export const fileOperationSchema = z.object({
   success: z.boolean(),
   message: z.string(),
@@ -131,6 +136,7 @@ export type InteractiveSchemaType = z.infer<typeof interactiveSchema>;
 export type CopySchemaType = z.infer<typeof copySchema>;
 export type StageSecretSchemaType = z.infer<typeof stageSecretSchema>;
 export type EnvrcConfigSchemaType = z.infer<typeof envrcConfigSchema>;
+export type EnvxrcFileConfigSchemaType = z.infer<typeof envxrcFileConfigSchema>;
 export type FileOperationSchemaType = z.infer<typeof fileOperationSchema>;
 export type CommandResultSchemaType = z.infer<typeof commandResultSchema>;
 

@@ -5,19 +5,74 @@ Environment file encryption and management tool for secure development workflows
 [![npm version](https://badge.fury.io/js/envx-cli.svg)](https://badge.fury.io/js/envx-cli)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
+## Table of Contents
+
+- [Overview](#overview)
+- [Features](#features)
+- [Prerequisites](#prerequisites)
+- [Installation](#installation)
+- [Quick Start](#quick-start)
+- [Commands](#commands)
+  - [envx init](#envx-init)
+  - [envx create](#envx-create)
+  - [envx encrypt](#envx-encrypt)
+  - [envx decrypt](#envx-decrypt)
+  - [envx interactive](#envx-interactive)
+  - [envx list](#envx-list)
+  - [envx copy](#envx-copy)
+  - [envx status](#envx-status)
+  - [envx config](#envx-config)
+- [Configuration](#configuration)
+  - [.envrc File](#envrc-file)
+  - [.envxrc File (Project Config)](#envxrc-file-project-config)
+  - [Secret Variable Naming](#secret-variable-naming)
+  - [Environment Filtering](#environment-filtering)
+  - [File Structure](#file-structure)
+- [Workflow Examples](#workflow-examples)
+  - [Basic Workflow](#basic-workflow)
+  - [Deployment Workflow](#deployment-workflow)
+  - [Team Workflow](#team-workflow)
+  - [Multi-Service Management](#multi-service-management)
+  - [Batch Operations](#batch-operations)
+  - [Copy to .env Workflow](#copy-to-env-workflow)
+  - [Dry Run Workflow](#dry-run-workflow)
+- [Security Best Practices](#security-best-practices)
+- [Integration with Direnv](#integration-with-direnv)
+- [Troubleshooting](#troubleshooting)
+- [API Reference](#api-reference)
+  - [Environment Variables](#environment-variables)
+  - [Exit Codes](#exit-codes)
+- [Testing](#testing)
+  - [Running Tests](#running-tests)
+  - [Testing Philosophy](#testing-philosophy)
+  - [Test Coverage](#test-coverage)
+  - [Test Structure](#test-structure)
+- [Development](#development)
+  - [Building from Source](#building-from-source)
+  - [Architecture](#architecture)
+  - [Development Workflow](#development-workflow)
+  - [Contributing](#contributing)
+- [Changelog](#changelog)
+- [License](#license)
+- [Support](#support)
+
 ## Overview
 
 EnvX is a command-line tool that helps you securely manage environment files across different stages (development, staging, production) using GPG encryption. It provides a simple workflow for encrypting sensitive environment variables while maintaining ease of use for development teams.
 
 ## Features
 
-- 🔒 **GPG-based encryption** for maximum security
-- 🎯 **Stage-based management** (development, staging, production, etc.)
-- 🚀 **Interactive setup** with guided configuration
-- 📁 **Batch operations** on multiple files and directories
-- 🔑 **Secret management** with `.envrc` integration
-- 🎨 **Beautiful CLI** with colored output and progress indicators
-- 🛡️ **Best practices** enforcement and security recommendations
+- **GPG-based encryption** for maximum security
+- **Stage-based management** (development, staging, production, etc.)
+- **Interactive setup** with guided configuration
+- **Batch operations** on multiple files and directories
+- **Secret management** with `.envrc` integration
+- **Project configuration** via `.envxrc` for per-project ignore patterns and environment tracking
+- **Environment filtering** to auto-ignore non-secret files (example, sample, template)
+- **Dry run mode** to preview operations without making changes
+- **Config management** CLI for managing project settings without editing JSON
+- **Beautiful CLI** with colored output and progress indicators
+- **Best practices** enforcement and security recommendations
 
 ## Prerequisites
 
@@ -121,6 +176,21 @@ Initialize EnvX in a new project with guided setup.
 envx init
 ```
 
+The init wizard will:
+
+1. Verify GPG is available
+2. Discover existing environment files, auto-ignoring non-secret files (example, sample, template)
+3. Let you select which environments to manage via checkbox prompt
+4. Offer to add non-selected environments to the ignore list in `.envxrc`
+5. Save your selected environments to `.envxrc`
+6. Update `.gitignore` with recommended patterns
+7. Optionally start interactive secret setup
+8. Optionally encrypt your environment files immediately after setup
+
+**Options:**
+
+- `-c, --cwd <path>` - Working directory
+
 ### `envx create`
 
 Create new environment files.
@@ -158,6 +228,9 @@ envx encrypt -e production
 # Encrypt all environments at once
 envx encrypt --all
 
+# Preview what would be encrypted (no changes made)
+envx encrypt -e production --dry-run
+
 # Use custom secret from .envrc
 envx encrypt -e production -s CUSTOM_SECRET
 
@@ -167,8 +240,8 @@ envx encrypt -e staging -i
 # Encrypt all with specific passphrase
 envx encrypt --all -p "your-passphrase"
 
-# Specify passphrase directly (not recommended)
-envx encrypt -e development -p "your-passphrase"
+# Overwrite existing encrypted files
+envx encrypt -e production --overwrite
 ```
 
 **Options:**
@@ -178,6 +251,8 @@ envx encrypt -e development -p "your-passphrase"
 - `-p, --passphrase <pass>` - Encryption passphrase
 - `-s, --secret <secret>` - Secret variable name from .envrc
 - `-i, --interactive` - Interactive file selection (disabled with --all)
+- `--overwrite` - Overwrite existing encrypted files
+- `--dry-run` - Show what would happen without making changes
 - `-c, --cwd <path>` - Working directory
 
 ### `envx decrypt`
@@ -190,6 +265,9 @@ envx decrypt -e production
 
 # Decrypt all environments at once
 envx decrypt --all
+
+# Preview what would be decrypted (no changes made)
+envx decrypt -e production --dry-run
 
 # Overwrite existing files without confirmation
 envx decrypt -e development --overwrite
@@ -209,6 +287,7 @@ envx decrypt -e staging -i
 - `-s, --secret <secret>` - Secret variable name from .envrc
 - `-i, --interactive` - Interactive file selection (disabled with --all)
 - `--overwrite` - Overwrite existing files without confirmation
+- `--dry-run` - Show what would happen without making changes
 - `-c, --cwd <path>` - Working directory
 
 ### `envx interactive`
@@ -234,7 +313,7 @@ envx interactive --generate
 
 ### `envx list`
 
-List all environment files and their status.
+List all environment files and their status. Automatically filters out non-secret environments (example, sample, template) based on your [ignore patterns](#environment-filtering).
 
 ```bash
 # List all environment files
@@ -296,7 +375,7 @@ envx copy -e production --all --overwrite
 
 ### `envx status`
 
-Show project encryption status and recommendations.
+Show project encryption status and recommendations. Automatically filters out non-secret environments based on your [ignore patterns](#environment-filtering).
 
 ```bash
 envx status
@@ -305,6 +384,158 @@ envx status
 **Options:**
 
 - `-c, --cwd <path>` - Working directory
+
+### `envx config`
+
+Manage project configuration stored in `.envxrc` without editing JSON manually.
+
+#### `envx config show`
+
+Display the current `.envxrc` configuration, showing both custom settings and defaults.
+
+```bash
+envx config show
+```
+
+#### `envx config ignore list`
+
+List all current ignore patterns (from `.envxrc` or defaults).
+
+```bash
+envx config ignore list
+```
+
+#### `envx config ignore add <pattern>`
+
+Add a pattern to the ignore list. Environments matching this pattern will be excluded from operations like `--all`, `list`, and `status`.
+
+```bash
+# Ignore the "test" environment
+envx config ignore add test
+
+# Ignore a custom environment name
+envx config ignore add local-dev
+```
+
+#### `envx config ignore remove <pattern>`
+
+Remove a pattern from the ignore list.
+
+```bash
+envx config ignore remove test
+```
+
+#### `envx config reset`
+
+Reset the configuration to defaults, removing all custom ignore patterns.
+
+```bash
+envx config reset
+```
+
+## Configuration
+
+### `.envrc` File
+
+EnvX uses `.envrc` files to store encryption secrets. The format follows the direnv convention:
+
+```bash
+# Environment secrets generated by envx
+export DEVELOPMENT_SECRET="your-development-secret"
+export STAGING_SECRET="your-staging-secret"
+export PRODUCTION_SECRET="your-production-secret"
+```
+
+### `.envxrc` File (Project Config)
+
+EnvX supports a `.envxrc` JSON file in your project root for per-project configuration. This file is automatically managed by `envx init` and `envx config` commands.
+
+```json
+{
+  "ignore": ["example", "sample", "template", "local-dev"],
+  "environments": ["development", "staging", "production"]
+}
+```
+
+**Fields:**
+
+| Field          | Type       | Description                                                                                                                                                                                                                           |
+| -------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ignore`       | `string[]` | Patterns to exclude from environment discovery. Environments whose names match any pattern (case-insensitive) are filtered from `--all`, `list`, and `status` operations. Defaults to `["example", "sample", "template"]` if not set. |
+| `environments` | `string[]` | List of managed environments. Set during `envx init` based on your selection.                                                                                                                                                         |
+
+You can manage this file through the CLI:
+
+```bash
+# View current config
+envx config show
+
+# Add a custom ignore pattern
+envx config ignore add test
+
+# Remove a pattern
+envx config ignore remove sample
+
+# Reset to defaults
+envx config reset
+```
+
+Or edit `.envxrc` directly as JSON.
+
+### Secret Variable Naming
+
+EnvX follows the convention: `<STAGE>_SECRET`
+
+Examples:
+
+- `DEVELOPMENT_SECRET`
+- `STAGING_SECRET`
+- `PRODUCTION_SECRET`
+- `LOCAL_SECRET`
+
+### Environment Filtering
+
+EnvX automatically filters non-secret environment files from discovery operations. By default, files matching `example`, `sample`, or `template` are excluded.
+
+This filtering applies to:
+
+- `envx encrypt --all` / `envx decrypt --all` (batch operations)
+- `envx list` (environment listing)
+- `envx status` (project status)
+- `envx init` (environment discovery)
+
+**How it works:**
+
+1. If `.envxrc` exists with an `ignore` field, those patterns are used
+2. If no `.envxrc` exists or `ignore` is not set, the defaults are used: `["example", "sample", "template"]`
+3. Pattern matching is case-insensitive (`.env.Example` matches pattern `example`)
+
+**Customizing filters:**
+
+```bash
+# Add a custom pattern
+envx config ignore add test
+
+# Remove a default pattern (to include it in operations)
+envx config ignore remove template
+
+# See current patterns
+envx config ignore list
+```
+
+**Bypass filtering:** Pass an explicit empty ignore list programmatically via `findAllEnvironments(cwd, [])` to include all environments.
+
+### File Structure
+
+```
+your-project/
+├── .env.development          # Unencrypted (local only)
+├── .env.staging.gpg         # Encrypted (committed)
+├── .env.production.gpg      # Encrypted (committed)
+├── .envrc                   # Secrets (local only)
+├── .envxrc                  # Project config (local only)
+└── .gitignore               # Excludes .env.* but allows *.gpg
+```
 
 ## Workflow Examples
 
@@ -458,11 +689,12 @@ envx decrypt --all --overwrite
 
 **Benefits of using `--all`:**
 
-- ✅ **Efficiency**: Process multiple environments in one command
-- ✅ **Consistency**: Same passphrase/secret handling across all environments
-- ✅ **Automation**: Perfect for CI/CD pipelines and scripts
-- ✅ **Safety**: Each environment is processed independently - failures in one don't stop others
-- ✅ **Reporting**: Comprehensive summary showing results for each environment
+- **Efficiency**: Process multiple environments in one command
+- **Consistency**: Same passphrase/secret handling across all environments
+- **Automation**: Perfect for CI/CD pipelines and scripts
+- **Safety**: Each environment is processed independently - failures in one don't stop others
+- **Reporting**: Comprehensive summary showing results for each environment
+- **Filtering**: Automatically skips non-secret environments (example, sample, template)
 
 **Key Features of `--all` Flag:**
 
@@ -490,67 +722,56 @@ envx copy -e production --overwrite
 
 **Use cases for `envx copy`:**
 
-- 🚀 **Deployment**: Copy environment configuration to `.env` for application use
-- 🔄 **Environment Switching**: Quickly switch between different configurations
-- 🛠️ **Local Development**: Use production/staging config locally for debugging
-- 📦 **Docker/Containers**: Set up environment in containerized deployments
-- 🔧 **CI/CD**: Activate specific environments during pipeline stages
-- 🏗️ **Multi-Service**: Manage environment files across multiple services from project root
-- ⚡ **Batch Operations**: Copy same environment to all services with one command
+- **Deployment**: Copy environment configuration to `.env` for application use
+- **Environment Switching**: Quickly switch between different configurations
+- **Local Development**: Use production/staging config locally for debugging
+- **Docker/Containers**: Set up environment in containerized deployments
+- **CI/CD**: Activate specific environments during pipeline stages
+- **Multi-Service**: Manage environment files across multiple services from project root
+- **Batch Operations**: Copy same environment to all services with one command
 
-## Configuration
+### Dry Run Workflow
 
-### `.envrc` File
-
-EnvX uses `.envrc` files to store encryption secrets. The format follows the direnv convention:
+Preview encrypt/decrypt operations before executing them:
 
 ```bash
-# Environment secrets generated by envx
-export DEVELOPMENT_SECRET="your-development-secret"
-export STAGING_SECRET="your-staging-secret"
-export PRODUCTION_SECRET="your-production-secret"
+# See what files would be encrypted
+envx encrypt -e production --dry-run
+
+# Preview batch encryption
+envx encrypt --all -p "your-passphrase" --dry-run
+
+# Preview decryption
+envx decrypt -e production --dry-run
 ```
 
-### Secret Variable Naming
+Dry run mode shows:
 
-EnvX follows the convention: `<STAGE>_SECRET`
+- Which files would be processed
+- The passphrase source (provided, `.envrc`, or interactive)
+- Total file count
 
-Examples:
-
-- `DEVELOPMENT_SECRET`
-- `STAGING_SECRET`
-- `PRODUCTION_SECRET`
-- `LOCAL_SECRET`
-
-### File Structure
-
-```
-your-project/
-├── .env.development          # Unencrypted (local only)
-├── .env.staging.gpg         # Encrypted (committed)
-├── .env.production.gpg      # Encrypted (committed)
-├── .envrc                   # Secrets (local only)
-└── .gitignore               # Excludes .env.* but allows *.gpg
-```
+No files are created, modified, or deleted during a dry run.
 
 ## Security Best Practices
 
-### ✅ Do's
+### Do's
 
-- ✅ Always encrypt production and staging environment files
-- ✅ Commit encrypted `.gpg` files to version control
-- ✅ Add `.envrc` to your `.gitignore`
-- ✅ Use strong, unique secrets for each environment
-- ✅ Regularly rotate encryption secrets
-- ✅ Use `envx status` to check your security posture
+- Always encrypt production and staging environment files
+- Commit encrypted `.gpg` files to version control
+- Add `.envrc` and `.envxrc` to your `.gitignore`
+- Use strong, unique secrets for each environment
+- Regularly rotate encryption secrets
+- Use `envx status` to check your security posture
+- Use `--dry-run` to preview operations before executing
 
-### ❌ Don'ts
+### Don'ts
 
-- ❌ Never commit unencrypted `.env.*` files (except templates)
-- ❌ Don't commit `.envrc` files to version control
-- ❌ Don't use weak or predictable passphrases
-- ❌ Don't share secrets through insecure channels
-- ❌ Don't leave decrypted files in production environments
+- Never commit unencrypted `.env.*` files (except templates)
+- Don't commit `.envrc` or `.envxrc` files to version control
+- Don't use weak or predictable passphrases
+- Don't share secrets through insecure channels
+- Don't leave decrypted files in production environments
 
 ### Recommended `.gitignore`
 
@@ -561,8 +782,9 @@ your-project/
 !.env.template
 !*.gpg
 
-# EnvX secrets
+# EnvX secrets and config
 .envrc
+.envxrc
 ```
 
 ## Integration with Direnv
@@ -655,15 +877,18 @@ EnvX respects the following environment variables:
 
 ### Exit Codes
 
-- `0` - Success
-- `1` - General error
-- `2` - Invalid arguments
-- `3` - File operation failed
-- `4` - GPG operation failed
+| Code | Constant         | Description                      |
+| ---- | ---------------- | -------------------------------- |
+| `0`  | `SUCCESS`        | Operation completed successfully |
+| `1`  | `GENERAL_ERROR`  | General error                    |
+| `2`  | `INVALID_ARGS`   | Invalid arguments provided       |
+| `3`  | `FILE_ERROR`     | File operation failed            |
+| `4`  | `GPG_ERROR`      | GPG operation failed             |
+| `5`  | `USER_CANCELLED` | Operation cancelled by user      |
 
 ## Testing
 
-EnvX includes a streamlined test suite focused on essential functionality and real-world CLI usage scenarios.
+EnvX includes a comprehensive test suite covering core functionality, configuration management, and real-world CLI usage scenarios.
 
 ### Running Tests
 
@@ -688,26 +913,32 @@ npm run test:watch
 
 The test suite prioritizes **essential functionality** over comprehensive coverage:
 
-- ✅ **Core business logic** - Command validation, file utilities, path manipulation
-- ✅ **Real CLI scenarios** - Actual command execution in various environments
-- ✅ **Critical workflows** - User-facing functionality that must work reliably
-- ❌ **UI/cosmetic features** - Colors, formatting, and visual elements
-- ❌ **Complex mocking** - Simplified approach focusing on actual behavior
+- **Core business logic** - Command validation, file utilities, path manipulation
+- **Configuration management** - `.envxrc` read/write/merge, ignore patterns, defaults
+- **Real CLI scenarios** - Actual command execution in various environments
+- **Critical workflows** - User-facing functionality that must work reliably
 
 ### Test Coverage
 
-**Current Status**: ✅ 120 tests passing, ~11s execution time
+**Current Status**: 181 tests passing across 7 test suites
 
-- **Core Tests**: 104 tests covering essential functionality
+- **Core Tests**: 165 tests covering essential functionality
   - Schema validation: 25 tests (command input validation)
-  - File utilities: 39 tests (path manipulation, secret generation)
+  - File utilities: 39 tests (path manipulation, secret generation, gitignore)
   - Command logic: 25 tests (workflow patterns and decision logic)
   - All-flag functionality: 15 tests (batch operations, error handling)
+  - EnvxrcConfig infrastructure: 23 tests (read/write/merge, ignore patterns, filtering)
+  - Config command: 7 tests (show, add, remove, reset operations)
+  - Copy command: 31 tests (single/multi-directory, encrypted/unencrypted)
 
 - **Integration Tests**: 16 tests covering real CLI usage
   - Help/version commands
   - Create command functionality
-  - All-flag compatibility testing
+  - Init command validation
+  - Config subcommand (show, ignore, reset)
+  - Dry run flag (encrypt/decrypt)
+  - Copy `--all` flag
+  - Environment filtering (list, status)
   - Error handling scenarios
   - Environment validation
 
@@ -717,9 +948,11 @@ The test suite prioritizes **essential functionality** over comprehensive covera
 __tests__/
 ├── core/                    # Essential functionality tests
 │   ├── schemas.test.ts     # Input validation for all commands
-│   ├── file.test.ts        # File utilities and path manipulation
+│   ├── file.test.ts        # File utilities, path manipulation, gitignore
 │   ├── commands.test.ts    # Command workflow logic patterns
-│   └── all-flag.test.ts    # Batch operations and --all flag functionality
+│   ├── all-flag.test.ts    # Batch operations and --all flag functionality
+│   ├── envxrc.test.ts      # .envxrc config read/write/merge/filtering
+│   └── config.test.ts      # Config command operations
 └── integration/            # End-to-end CLI tests
     └── cli.test.ts         # Real CLI execution scenarios
 ```
@@ -738,6 +971,36 @@ npm run build
 npm link
 ```
 
+### Architecture
+
+```
+src/
+├── index.ts                 # Entry point, CLI framework, inline commands
+├── commands/                # Command implementations
+│   ├── config.ts           # envx config subcommand
+│   ├── copy.ts             # envx copy
+│   ├── create.ts           # envx create
+│   ├── decrypt.ts          # envx decrypt
+│   ├── encrypt.ts          # envx encrypt
+│   └── interactive.ts      # envx interactive
+├── schemas/
+│   └── index.ts            # Zod validation schemas
+├── types/
+│   └── index.ts            # TypeScript interfaces and enums
+└── utils/
+    ├── exec.ts             # GPG operations, CLI output (ExecUtils, CliUtils)
+    ├── file.ts             # File discovery, .envrc/.envxrc, gitignore (FileUtils)
+    └── interactive.ts      # User prompts via inquirer (InteractiveUtils)
+```
+
+**Key patterns:**
+
+- Each command file exports `createXxxCommand()` (Commander command) and `executeXxx()` (core logic)
+- All utility classes use static methods, no instances
+- Zod schemas validate all command inputs; `--all` dynamically alters schema requirements
+- Configuration resolution: `--passphrase` flag > `.envrc` file > interactive prompt
+- Working directory: `--cwd` flag > `process.cwd()`
+
 ### Development Workflow
 
 ```bash
@@ -749,6 +1012,9 @@ npm run test:watch
 
 # Build and test
 npm run build && npm test
+
+# Lint and format
+npm run lint:fix && npm run format
 ```
 
 ### Contributing
@@ -778,9 +1044,9 @@ MIT © [rahulretnan](https://github.com/rahulretnan)
 
 ## Support
 
-- 📝 [Issues](https://github.com/rahulretnan/envx-cli/issues)
-- 💬 [Discussions](https://github.com/rahulretnan/envx-cli/discussions)
-- 📧 Email: hi@rahulretnan.me
+- [Issues](https://github.com/rahulretnan/envx-cli/issues)
+- [Discussions](https://github.com/rahulretnan/envx-cli/discussions)
+- Email: hi@rahulretnan.me
 
 ---
 
