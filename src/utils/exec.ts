@@ -1,5 +1,5 @@
 import chalk from 'chalk';
-import { execSync, execFileSync } from 'child_process';
+import { execSync, execFileSync, spawn, ChildProcess } from 'child_process';
 import { writeFileSync } from 'fs';
 import shell from 'shelljs';
 import { CommandResult } from '../types';
@@ -96,6 +96,82 @@ export class ExecUtils {
           : (err.stderr?.toString() ?? err.message);
       return { success: false, error: stderr };
     }
+  }
+
+  /**
+   * Spawn a sub-process with the supplied env, inheriting stdio.
+   *
+   * Forwards SIGINT / SIGTERM / SIGHUP from the parent process to the
+   * sub-process so Ctrl-C cleanly propagates. Explicitly sets
+   * `shell: false` — argv is passed literally, no shell interpolation,
+   * no $VAR expansion in argv, no command chaining. Users who need
+   * shell features must wrap their command explicitly (e.g.
+   * `envx run -e prod -- sh -c 'cmd1 && cmd2'`).
+   *
+   * Resolves with the sub-process exit code. On signal termination,
+   * re-raises the signal on the parent so the parent's wait-status
+   * accurately reflects the cause. The caller is expected to feed the
+   * resolved code into `process.exit(code)`.
+   */
+  static spawnChildWithEnv(
+    args: string[],
+    env: Record<string, string | undefined>,
+    cwd: string
+  ): Promise<number> {
+    if (args.length === 0) {
+      return Promise.reject(new Error('spawnChildWithEnv: empty args'));
+    }
+
+    return new Promise((resolve, reject) => {
+      let sub: ChildProcess;
+      try {
+        sub = spawn(args[0], args.slice(1), {
+          stdio: 'inherit',
+          shell: false,
+          env,
+          cwd,
+        });
+      } catch (err) {
+        reject(err);
+        return;
+      }
+
+      const forward = (sig: string) => () => {
+        if (sub && !sub.killed) {
+          sub.kill(sig as Parameters<typeof sub.kill>[0]);
+        }
+      };
+      const sigint = forward('SIGINT');
+      const sigterm = forward('SIGTERM');
+      const sighup = forward('SIGHUP');
+
+      process.on('SIGINT', sigint);
+      process.on('SIGTERM', sigterm);
+      process.on('SIGHUP', sighup);
+
+      const cleanup = () => {
+        process.off('SIGINT', sigint);
+        process.off('SIGTERM', sigterm);
+        process.off('SIGHUP', sighup);
+      };
+
+      sub.on('error', (err: Error & { code?: string }) => {
+        cleanup();
+        reject(err);
+      });
+
+      sub.on('exit', (code, signal) => {
+        cleanup();
+        if (signal) {
+          // Re-raise on the parent so our wait-status reflects the signal.
+          process.kill(process.pid, signal);
+          // Safety net in case the signal is ignored.
+          resolve(128);
+        } else {
+          resolve(code ?? 0);
+        }
+      });
+    });
   }
 
   /**
