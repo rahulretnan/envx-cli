@@ -17,6 +17,11 @@ module.exports = {
   restoreMocks: true,
   testPathIgnorePatterns: ['/node_modules/', '/dist/'],
   coveragePathIgnorePatterns: ['/node_modules/', '/dist/', '/__tests__/'],
+  moduleNameMapper: {
+    // chalk v5 is ESM-only and cannot be loaded by ts-jest in CJS mode.
+    // Tests don't assert on ANSI output, so redirect to a passthrough stub.
+    '^chalk$': '<rootDir>/__tests__/__mocks__/chalk.js',
+  },
   extensionsToTreatAsEsm: ['.ts'],
   globals: {
     'ts-jest': {
