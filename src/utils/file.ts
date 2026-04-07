@@ -190,6 +190,28 @@ export class FileUtils {
   }
 
   /**
+   * Resolve the env file for a stage, looking ONLY in cwd (no recursion).
+   *
+   * Returns the encrypted variant if both plain and encrypted exist.
+   * Returns null if neither exists.
+   */
+  static async resolveStageFile(
+    stage: string,
+    cwd: string
+  ): Promise<{ path: string; encrypted: boolean } | null> {
+    const encryptedPath = path.join(cwd, `.env.${stage}.gpg`);
+    const plainPath = path.join(cwd, `.env.${stage}`);
+
+    if (await this.fileExists(encryptedPath)) {
+      return { path: encryptedPath, encrypted: true };
+    }
+    if (await this.fileExists(plainPath)) {
+      return { path: plainPath, encrypted: false };
+    }
+    return null;
+  }
+
+  /**
    * Check if file exists
    */
   static async fileExists(filePath: string): Promise<boolean> {
