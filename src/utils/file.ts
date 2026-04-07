@@ -12,6 +12,7 @@ import {
   EnvxrcConfig,
   FileOperationResult,
 } from '../types';
+import { ExecUtils } from './exec';
 
 export class FileUtils {
   static readonly DEFAULT_IGNORE_PATTERNS = ['example', 'sample', 'template'];
@@ -268,6 +269,39 @@ export class FileUtils {
     ]);
 
     return hash1 === hash2;
+  }
+
+  /**
+   * Load an env source (plain or encrypted) into a parsed key/value map.
+   *
+   * For encrypted sources, a passphrase must be supplied. Decryption
+   * happens in-memory via ExecUtils.decryptFileToString — nothing is
+   * ever written to disk.
+   */
+  static async loadEnvSource(
+    source: { path: string; encrypted: boolean },
+    passphrase?: string
+  ): Promise<Record<string, string>> {
+    let content: string;
+
+    if (source.encrypted) {
+      if (!passphrase) {
+        throw new Error(
+          `Cannot load encrypted source ${source.path}: passphrase is required`
+        );
+      }
+      const result = ExecUtils.decryptFileToString(source.path, passphrase);
+      if (!result.success) {
+        throw new Error(
+          `Decryption failed for ${source.path}: ${result.error ?? 'unknown error'}`
+        );
+      }
+      content = result.content ?? '';
+    } else {
+      content = await fs.readFile(source.path, 'utf-8');
+    }
+
+    return this.parseEnvContent(content);
   }
 
   /**

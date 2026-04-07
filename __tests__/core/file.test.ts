@@ -1,6 +1,24 @@
+// chalk is ESM-only (v5). Mock it so Jest (CJS mode) can load exec.ts.
+jest.mock('chalk', () => ({
+  default: {
+    blue: (s: string) => s,
+    green: (s: string) => s,
+    red: (s: string) => s,
+    yellow: (s: string) => s,
+    cyan: Object.assign((s: string) => s, {
+      bold: { cyan: (s: string) => s },
+    }),
+    bold: Object.assign((s: string) => s, {
+      cyan: (s: string) => s,
+    }),
+    magenta: (s: string) => s,
+  },
+}));
+
 import fs from 'fs-extra';
 import os from 'os';
 import path from 'path';
+import { ExecUtils } from '../../src/utils/exec';
 import { FileUtils } from '../../src/utils/file';
 
 describe('FileUtils Core Operations', () => {
@@ -493,6 +511,71 @@ describe('FileUtils Core Operations', () => {
 
     it('should allow empty values', () => {
       expect(FileUtils.parseEnvContent('FOO=')).toEqual({ FOO: '' });
+    });
+  });
+
+  describe('loadEnvSource', () => {
+    let tempDir: string;
+
+    beforeEach(async () => {
+      tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'envx-load-'));
+      jest.restoreAllMocks();
+    });
+
+    afterEach(async () => {
+      await fs.remove(tempDir);
+    });
+
+    it('should load and parse a plain file', async () => {
+      const filePath = path.join(tempDir, 'plain.env');
+      await fs.writeFile(filePath, 'FOO=bar\nBAZ=qux');
+
+      const result = await FileUtils.loadEnvSource({
+        path: filePath,
+        encrypted: false,
+      });
+
+      expect(result).toEqual({ FOO: 'bar', BAZ: 'qux' });
+    });
+
+    it('should decrypt and parse an encrypted file using the provided passphrase', async () => {
+      const filePath = path.join(tempDir, 'secret.env.gpg');
+      await fs.writeFile(filePath, 'ciphertext'); // content irrelevant — decrypt is mocked
+
+      const decryptSpy = jest
+        .spyOn(ExecUtils, 'decryptFileToString')
+        .mockReturnValue({
+          success: true,
+          content: 'SECRET=s3cret\nOTHER=val',
+        });
+
+      const result = await FileUtils.loadEnvSource(
+        { path: filePath, encrypted: true },
+        'my-passphrase'
+      );
+
+      expect(decryptSpy).toHaveBeenCalledWith(filePath, 'my-passphrase');
+      expect(result).toEqual({ SECRET: 's3cret', OTHER: 'val' });
+    });
+
+    it('should throw a descriptive error when decryption fails', async () => {
+      jest.spyOn(ExecUtils, 'decryptFileToString').mockReturnValue({
+        success: false,
+        error: 'gpg: decryption failed: Bad session key',
+      });
+
+      await expect(
+        FileUtils.loadEnvSource(
+          { path: '/tmp/fake.gpg', encrypted: true },
+          'wrong'
+        )
+      ).rejects.toThrow(/Decryption failed/);
+    });
+
+    it('should throw when encrypted source is requested without a passphrase', async () => {
+      await expect(
+        FileUtils.loadEnvSource({ path: '/tmp/fake.gpg', encrypted: true })
+      ).rejects.toThrow(/passphrase/i);
     });
   });
 });
