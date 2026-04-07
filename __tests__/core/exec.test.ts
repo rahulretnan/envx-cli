@@ -1,22 +1,4 @@
 import * as cp from 'child_process';
-
-// chalk is ESM-only (v5). Mock it so Jest (CJS mode) can load exec.ts.
-jest.mock('chalk', () => ({
-  default: {
-    blue: (s: string) => s,
-    green: (s: string) => s,
-    red: (s: string) => s,
-    yellow: (s: string) => s,
-    cyan: Object.assign((s: string) => s, {
-      bold: { cyan: (s: string) => s },
-    }),
-    bold: Object.assign((s: string) => s, {
-      cyan: (s: string) => s,
-    }),
-    magenta: (s: string) => s,
-  },
-}));
-
 import { ExecUtils } from '../../src/utils/exec';
 
 jest.mock('child_process');
