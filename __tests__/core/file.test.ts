@@ -368,6 +368,75 @@ describe('FileUtils Core Operations', () => {
     });
   });
 
+  describe('resolveStageFile', () => {
+    let tempDir: string;
+
+    beforeEach(async () => {
+      tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'envx-resolve-'));
+    });
+
+    afterEach(async () => {
+      await fs.remove(tempDir);
+    });
+
+    it('should return null when neither plain nor encrypted exists', async () => {
+      const result = await FileUtils.resolveStageFile('production', tempDir);
+      expect(result).toBeNull();
+    });
+
+    it('should return the plain file when only plain exists', async () => {
+      await fs.writeFile(path.join(tempDir, '.env.production'), 'FOO=bar');
+      const result = await FileUtils.resolveStageFile('production', tempDir);
+      expect(result).toEqual({
+        path: path.join(tempDir, '.env.production'),
+        encrypted: false,
+      });
+    });
+
+    it('should return the encrypted file when only encrypted exists', async () => {
+      await fs.writeFile(
+        path.join(tempDir, '.env.production.gpg'),
+        'ciphertext'
+      );
+      const result = await FileUtils.resolveStageFile('production', tempDir);
+      expect(result).toEqual({
+        path: path.join(tempDir, '.env.production.gpg'),
+        encrypted: true,
+      });
+    });
+
+    it('should prefer encrypted when both exist (encrypted wins)', async () => {
+      await fs.writeFile(path.join(tempDir, '.env.production'), 'FOO=plain');
+      await fs.writeFile(
+        path.join(tempDir, '.env.production.gpg'),
+        'ciphertext'
+      );
+      const result = await FileUtils.resolveStageFile('production', tempDir);
+      expect(result).toEqual({
+        path: path.join(tempDir, '.env.production.gpg'),
+        encrypted: true,
+      });
+    });
+
+    it('should only look in cwd and ignore files in subdirectories', async () => {
+      const subDir = path.join(tempDir, 'apps', 'web');
+      await fs.ensureDir(subDir);
+      await fs.writeFile(path.join(subDir, '.env.production'), 'FOO=nested');
+      const result = await FileUtils.resolveStageFile('production', tempDir);
+      expect(result).toBeNull();
+    });
+
+    // On case-insensitive macOS volumes, `FileUtils.fileExists('.env.Production')`
+    // may return true when asked for `.env.production`. Skip this assertion on
+    // non-Linux so CI stays green on macOS dev machines.
+    const caseIt = process.platform === 'linux' ? it : it.skip;
+    caseIt('should be case-sensitive on stage name (linux only)', async () => {
+      await fs.writeFile(path.join(tempDir, '.env.Production'), 'FOO=cap');
+      const result = await FileUtils.resolveStageFile('production', tempDir);
+      expect(result).toBeNull();
+    });
+  });
+
   describe('parseEnvContent', () => {
     it('should parse simple KEY=VALUE lines', () => {
       const result = FileUtils.parseEnvContent('FOO=bar\nBAZ=qux');
