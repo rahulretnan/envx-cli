@@ -42,6 +42,39 @@ export function parseInlineEnv(input: string): { key: string; value: string } {
   };
 }
 
+/**
+ * Collect raw sources from parsed CLI options into an ordered list.
+ *
+ * Order matters — it drives the merge pipeline later:
+ *   1. -e stage (if any)
+ *   2. -f files, in argv order
+ *   3. --env inline overrides, in argv order
+ *
+ * Throws if any --env entry is malformed.
+ */
+export function collectRawSources(opts: RawRunOptions): RawSource[] {
+  const sources: RawSource[] = [];
+
+  if (opts.environment) {
+    sources.push({ kind: 'stage', stage: String(opts.environment) });
+  }
+
+  if (Array.isArray(opts.envFile)) {
+    for (const p of opts.envFile) {
+      sources.push({ kind: 'file', path: String(p) });
+    }
+  }
+
+  if (Array.isArray(opts.env)) {
+    for (const kv of opts.env) {
+      const { key, value } = parseInlineEnv(String(kv));
+      sources.push({ kind: 'inline', key, value });
+    }
+  }
+
+  return sources;
+}
+
 export const createRunCommand = (): Command => {
   const command = new Command('run');
   // Wiring happens in Task 13.
