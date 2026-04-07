@@ -26,6 +26,22 @@ export type LoadedSource = {
 /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
 type RawRunOptions = any;
 
+/**
+ * Parse a single `KEY=VALUE` string from the `--env` flag.
+ * Throws with a descriptive message if the input is not in the
+ * expected format.
+ */
+export function parseInlineEnv(input: string): { key: string; value: string } {
+  const eq = input.indexOf('=');
+  if (eq <= 0) {
+    throw new Error(`--env requires KEY=VALUE format, got: ${input}`);
+  }
+  return {
+    key: input.slice(0, eq),
+    value: input.slice(eq + 1),
+  };
+}
+
 export const createRunCommand = (): Command => {
   const command = new Command('run');
   // Wiring happens in Task 13.
