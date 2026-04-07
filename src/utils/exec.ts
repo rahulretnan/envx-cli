@@ -1,5 +1,5 @@
 import chalk from 'chalk';
-import { execSync } from 'child_process';
+import { execSync, execFileSync } from 'child_process';
 import { writeFileSync } from 'fs';
 import shell from 'shelljs';
 import { CommandResult } from '../types';
@@ -59,6 +59,43 @@ export class ExecUtils {
   ): CommandResult {
     const command = `gpg --passphrase "${passphrase}" --quiet --yes --batch -o "${outputPath}" -d "${encryptedPath}"`;
     return this.exec(command, { silent: true });
+  }
+
+  /**
+   * Decrypt a GPG file to an in-memory string. Never writes to disk.
+   *
+   * Uses execFileSync with an argument array — no shell interpolation,
+   * so passphrase / path values cannot escape into a shell command.
+   * The passphrase still flows through argv (visible via `ps` on some
+   * systems); hardening to stdin is a separate follow-up.
+   */
+  static decryptFileToString(
+    encryptedPath: string,
+    passphrase: string
+  ): { success: boolean; content?: string; error?: string } {
+    const args = [
+      '--passphrase',
+      passphrase,
+      '--quiet',
+      '--yes',
+      '--batch',
+      '-d',
+      encryptedPath,
+    ];
+    try {
+      const stdout = execFileSync('gpg', args, {
+        encoding: 'utf-8',
+        stdio: ['ignore', 'pipe', 'pipe'],
+      });
+      return { success: true, content: stdout };
+    } catch (error) {
+      const err = error as Error & { stderr?: Buffer | string };
+      const stderr =
+        typeof err.stderr === 'string'
+          ? err.stderr
+          : (err.stderr?.toString() ?? err.message);
+      return { success: false, error: stderr };
+    }
   }
 
   /**
