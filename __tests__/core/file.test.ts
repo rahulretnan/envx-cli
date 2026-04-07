@@ -367,4 +367,63 @@ describe('FileUtils Core Operations', () => {
       expect(result.error).toBeDefined();
     });
   });
+
+  describe('parseEnvContent', () => {
+    it('should parse simple KEY=VALUE lines', () => {
+      const result = FileUtils.parseEnvContent('FOO=bar\nBAZ=qux');
+      expect(result).toEqual({ FOO: 'bar', BAZ: 'qux' });
+    });
+
+    it('should strip surrounding double quotes', () => {
+      const result = FileUtils.parseEnvContent('FOO="hello world"');
+      expect(result).toEqual({ FOO: 'hello world' });
+    });
+
+    it('should ignore comment lines', () => {
+      const result = FileUtils.parseEnvContent('# a comment\nFOO=bar');
+      expect(result).toEqual({ FOO: 'bar' });
+    });
+
+    it('should expand ${VAR} references to keys defined earlier in the same content', () => {
+      const result = FileUtils.parseEnvContent(
+        'HOST=db.example.com\nURL=postgres://${HOST}/app'
+      );
+      expect(result.URL).toBe('postgres://db.example.com/app');
+    });
+
+    it('should expand ${VAR} references against process.env', () => {
+      process.env.__ENVX_TEST_EXPAND__ = 'found';
+      try {
+        const result = FileUtils.parseEnvContent(
+          'VALUE=${__ENVX_TEST_EXPAND__}-suffix'
+        );
+        expect(result.VALUE).toBe('found-suffix');
+      } finally {
+        delete process.env.__ENVX_TEST_EXPAND__;
+      }
+    });
+
+    it('should support ${VAR:-default} default syntax', () => {
+      const result = FileUtils.parseEnvContent(
+        'VALUE=${__ENVX_DEFINITELY_UNSET__:-fallback}'
+      );
+      expect(result.VALUE).toBe('fallback');
+    });
+
+    it('should NOT mutate process.env', () => {
+      const beforeKeys = Object.keys(process.env).sort();
+      FileUtils.parseEnvContent('__ENVX_SHOULD_NOT_LEAK__=oops');
+      const afterKeys = Object.keys(process.env).sort();
+      expect(afterKeys).toEqual(beforeKeys);
+      expect(process.env.__ENVX_SHOULD_NOT_LEAK__).toBeUndefined();
+    });
+
+    it('should return empty object for empty content', () => {
+      expect(FileUtils.parseEnvContent('')).toEqual({});
+    });
+
+    it('should allow empty values', () => {
+      expect(FileUtils.parseEnvContent('FOO=')).toEqual({ FOO: '' });
+    });
+  });
 });

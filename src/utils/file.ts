@@ -1,4 +1,6 @@
 import crypto from 'crypto';
+import * as dotenv from 'dotenv';
+import { expand } from 'dotenv-expand';
 import fastGlob from 'fast-glob';
 import fs from 'fs-extra';
 import { replace } from 'lodash';
@@ -281,6 +283,28 @@ export class FileUtils {
       console.warn(`Warning: Could not read .envrc file: ${error}`);
       return {};
     }
+  }
+
+  /**
+   * Parse .env-style content into a key/value map.
+   *
+   * Runs dotenv.parse for tokenisation, then dotenv-expand for ${VAR} /
+   * ${VAR:-default} expansion. Expansion reads from process.env but is
+   * given a COPY so real process.env is never mutated.
+   *
+   * Does not support command substitution ($(...)) — intentionally.
+   */
+  static parseEnvContent(content: string): Record<string, string> {
+    const parsed = dotenv.parse(content);
+    // Pass a throwaway copy so dotenv-expand's in-place writes to processEnv
+    // don't leak into the real environment. Reading still sees current vars.
+    const processEnvCopy: Record<string, string> = Object.fromEntries(
+      Object.entries(process.env).filter(
+        (entry): entry is [string, string] => entry[1] !== undefined
+      )
+    );
+    expand({ parsed, processEnv: processEnvCopy });
+    return parsed;
   }
 
   /**
