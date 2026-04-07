@@ -1,4 +1,9 @@
-import { collectRawSources, parseInlineEnv } from '../../src/commands/run';
+import {
+  collectRawSources,
+  mergeEnv,
+  parseInlineEnv,
+  type LoadedSource,
+} from '../../src/commands/run';
 
 describe('parseInlineEnv', () => {
   it('should parse KEY=value', () => {
@@ -82,5 +87,88 @@ describe('collectRawSources', () => {
     expect(() => collectRawSources({ env: ['badformat'] })).toThrow(
       /KEY=VALUE format/
     );
+  });
+});
+
+describe('mergeEnv', () => {
+  const makeSource = (
+    values: Record<string, string>,
+    origin = 'test'
+  ): LoadedSource => ({
+    origin,
+    encrypted: false,
+    values,
+  });
+
+  it('should merge a single source with an empty parent', () => {
+    const result = mergeEnv([makeSource({ FOO: 'bar' })], {}, false);
+    expect(result).toEqual({ FOO: 'bar' });
+  });
+
+  it('should have later sources override earlier sources', () => {
+    const result = mergeEnv(
+      [makeSource({ FOO: 'first' }), makeSource({ FOO: 'second' })],
+      {},
+      false
+    );
+    expect(result.FOO).toBe('second');
+  });
+
+  it('should preserve process.env values on conflict when overload is off (default)', () => {
+    const parent = { FOO: 'from-shell', PATH: '/usr/bin' };
+    const result = mergeEnv([makeSource({ FOO: 'from-file' })], parent, false);
+    expect(result.FOO).toBe('from-shell');
+    expect(result.PATH).toBe('/usr/bin');
+  });
+
+  it('should add file keys that are NOT in process.env even without overload', () => {
+    const parent = { PATH: '/usr/bin' };
+    const result = mergeEnv([makeSource({ NEW_KEY: 'hello' })], parent, false);
+    expect(result.NEW_KEY).toBe('hello');
+    expect(result.PATH).toBe('/usr/bin');
+  });
+
+  it('should override process.env when overload is on', () => {
+    const parent = { FOO: 'from-shell' };
+    const result = mergeEnv([makeSource({ FOO: 'from-file' })], parent, true);
+    expect(result.FOO).toBe('from-file');
+  });
+
+  it('should include inline values and have them beat files in the source list', () => {
+    const result = mergeEnv(
+      [
+        makeSource({ FOO: 'from-file' }, 'file'),
+        makeSource({ FOO: 'from-inline' }, 'inline'),
+      ],
+      {},
+      false
+    );
+    expect(result.FOO).toBe('from-inline');
+  });
+
+  it('should still let process.env beat inline when overload is off', () => {
+    const parent = { FOO: 'from-shell' };
+    const result = mergeEnv(
+      [makeSource({ FOO: 'from-inline' }, 'inline')],
+      parent,
+      false
+    );
+    expect(result.FOO).toBe('from-shell');
+  });
+
+  it('should let inline beat process.env when overload is on', () => {
+    const parent = { FOO: 'from-shell' };
+    const result = mergeEnv(
+      [makeSource({ FOO: 'from-inline' }, 'inline')],
+      parent,
+      true
+    );
+    expect(result.FOO).toBe('from-inline');
+  });
+
+  it('should NOT mutate the parent env object', () => {
+    const parent: Record<string, string> = { FOO: 'original' };
+    mergeEnv([makeSource({ FOO: 'changed', NEW: 'added' })], parent, true);
+    expect(parent).toEqual({ FOO: 'original' });
   });
 });

@@ -75,6 +75,58 @@ export function collectRawSources(opts: RawRunOptions): RawSource[] {
   return sources;
 }
 
+/**
+ * Merge loaded sources and the parent env into a final env map,
+ * applying dotenvx-style precedence.
+ *
+ * Without --overload (default): parent env values win on conflict.
+ *   Files and inline overrides only fill in keys the parent doesn't
+ *   already define. This makes `envx run -e prod -- npm start` safe
+ *   to invoke from a shell that has NODE_ENV already set — existing
+ *   values are preserved.
+ *
+ * With --overload: files and inline overrides win over the parent.
+ *
+ * Within the source list itself, later sources always beat earlier
+ * sources (this is how inline --env ends up beating files — it sits
+ * last in the list by construction in collectRawSources).
+ *
+ * The parent env is NOT mutated. The returned object is fresh.
+ */
+export function mergeEnv(
+  loadedSources: LoadedSource[],
+  parentEnv: Record<string, string | undefined>,
+  overload: boolean
+): Record<string, string> {
+  // Walk sources in order; later wins.
+  const fromSources: Record<string, string> = {};
+  for (const source of loadedSources) {
+    Object.assign(fromSources, source.values);
+  }
+
+  // Copy the parent so we never mutate it. Drop undefined values
+  // (Node's process.env has `string | undefined` in its type but
+  // only `string` values at runtime).
+  const finalEnv: Record<string, string> = {};
+  for (const [k, v] of Object.entries(parentEnv)) {
+    if (typeof v === 'string') {
+      finalEnv[k] = v;
+    }
+  }
+
+  if (overload) {
+    Object.assign(finalEnv, fromSources);
+  } else {
+    for (const [k, v] of Object.entries(fromSources)) {
+      if (!(k in finalEnv)) {
+        finalEnv[k] = v;
+      }
+    }
+  }
+
+  return finalEnv;
+}
+
 export const createRunCommand = (): Command => {
   const command = new Command('run');
   // Wiring happens in Task 13.
