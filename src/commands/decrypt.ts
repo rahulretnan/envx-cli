@@ -223,7 +223,7 @@ async function processSingleEnvironment(
   // Get passphrase
   if (!passphrase || passphrase.trim() === '') {
     // Try to get from .envrc file
-    const envrcConfig = await FileUtils.readEnvrc(cwd);
+    const envrcConfig = await FileUtils.readEnvrcNearest(cwd);
     const secretVar = FileUtils.generateSecretVariableName(environment);
 
     if (rawOptions.secret && envrcConfig[rawOptions.secret]) {
