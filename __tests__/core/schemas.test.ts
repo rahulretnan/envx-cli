@@ -4,6 +4,7 @@ import {
   validateDecryptOptions,
   validateEncryptOptions,
   validateInteractiveOptions,
+  validateRunOptions,
 } from '../../src/schemas';
 
 describe('Schema Validation Core', () => {
@@ -259,6 +260,50 @@ describe('Schema Validation Core', () => {
       const result = validateCopyOptions(options);
       expect(result.all).toBe(true);
       expect(result.environment).toBe('production');
+    });
+  });
+
+  describe('validateRunOptions', () => {
+    it('should accept minimal valid options with environment', () => {
+      expect(() =>
+        validateRunOptions({ environment: 'production' })
+      ).not.toThrow();
+    });
+
+    it('should accept envFile as an array', () => {
+      expect(() =>
+        validateRunOptions({ envFile: ['.env', '.env.local'] })
+      ).not.toThrow();
+    });
+
+    it('should accept env as an array of strings', () => {
+      expect(() =>
+        validateRunOptions({ env: ['FOO=bar', 'BAZ=qux'] })
+      ).not.toThrow();
+    });
+
+    it('should accept all optional flags together', () => {
+      expect(() =>
+        validateRunOptions({
+          environment: 'production',
+          envFile: ['.env.overrides'],
+          env: ['LOG=debug'],
+          passphrase: 'secret',
+          cwd: '/tmp/project',
+          overload: true,
+          dryRun: false,
+        })
+      ).not.toThrow();
+    });
+
+    it('should reject overload when it is not a boolean', () => {
+      expect(() =>
+        validateRunOptions({ environment: 'prod', overload: 'yes' })
+      ).toThrow();
+    });
+
+    it('should reject envFile when it is not an array', () => {
+      expect(() => validateRunOptions({ envFile: '.env' })).toThrow();
     });
   });
 
