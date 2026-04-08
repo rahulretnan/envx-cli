@@ -126,3 +126,25 @@ When adding new functionality:
 ---
 
 This streamlined approach ensures we have confidence in the CLI's core functionality while keeping the test suite maintainable and focused on what matters most to users.
+
+## envx run command
+
+### What we test
+
+- **Pure functions** (`collectRawSources`, `parseInlineEnv`, `mergeEnv`, `formatDryRun`) are unit tested in `__tests__/core/run.test.ts` with no subprocess and no GPG.
+- **Utility helpers** (`FileUtils.parseEnvContent`, `FileUtils.resolveStageFile`, `FileUtils.loadEnvSource`, `ExecUtils.decryptFileToString`) are unit tested with mocked I/O.
+- **End-to-end flow** (real GPG, real spawn, real exit-code propagation) is covered in `__tests__/integration/cli.test.ts` under the `Run Command` describe block.
+
+### What we intentionally skip in v1
+
+- **Signal forwarding tests** (SIGINT, SIGTERM, SIGHUP). These are reliable in practice but hard to write cross-platform. The spawn helper's signal-forwarding code is small and well-understood. If a bug ever appears here, add a regression test at that point.
+- **Variable expansion edge cases** — covered by `dotenv-expand`'s own test suite.
+- **TTY / no-TTY behavior of the passphrase prompt** — not run-specific.
+
+### Critical constraint
+
+`executeRun` calls `process.exit` after the sub-process finishes. **Jest cannot intercept this.** That's why the merge and source-collection logic is implemented as _pure functions_ that take explicit inputs and return explicit outputs, not as methods that read `process.env` directly. Unit tests exercise the pure functions; the orchestrator is only touched through the integration tests, which spawn `dist/index.js` as a fresh subprocess.
+
+### Prerequisites
+
+Integration tests for `envx run` require `npm run build` first. They exec `dist/index.js` directly. If the source has changed, rebuild before running integration tests.
