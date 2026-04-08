@@ -93,18 +93,29 @@ export class FileUtils {
   }
 
   /**
-   * Get ignore patterns from .envxrc or defaults
+   * Get ignore patterns from the nearest `.envxrc` (walking upward) or
+   * defaults. An explicit empty array in `.envxrc.ignore` is respected
+   * as the "disable filtering" escape hatch.
    */
   static async getIgnorePatterns(cwd: string): Promise<string[]> {
-    const config = await this.readEnvxrc(cwd);
+    const dir = await this.findEnvxrcUpward(cwd);
+    if (dir === null) {
+      return this.DEFAULT_IGNORE_PATTERNS;
+    }
+    const config = await this.readEnvxrc(dir);
     return config.ignore ?? this.DEFAULT_IGNORE_PATTERNS;
   }
 
   /**
-   * Get excluded directories from .envxrc or defaults
+   * Get excluded directories from the nearest `.envxrc` (walking upward)
+   * or defaults.
    */
   static async getExcludeDirs(cwd: string): Promise<string[]> {
-    const config = await this.readEnvxrc(cwd);
+    const dir = await this.findEnvxrcUpward(cwd);
+    if (dir === null) {
+      return this.DEFAULT_EXCLUDE_DIRS;
+    }
+    const config = await this.readEnvxrc(dir);
     return config.excludeDirs ?? this.DEFAULT_EXCLUDE_DIRS;
   }
 

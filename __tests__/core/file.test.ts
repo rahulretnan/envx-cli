@@ -815,4 +815,85 @@ describe('FileUtils Core Operations', () => {
       expect(result).toEqual({});
     });
   });
+
+  describe('getIgnorePatterns with upward discovery', () => {
+    let tempDir: string;
+
+    beforeEach(async () => {
+      tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'envx-ignoreup-'));
+      tempDir = await fs.realpath(tempDir);
+    });
+
+    afterEach(async () => {
+      await fs.remove(tempDir);
+    });
+
+    it('honors .envxrc.ignore from an ancestor directory', async () => {
+      const sub = path.join(tempDir, 'packages', 'db');
+      await fs.ensureDir(sub);
+      await fs.writeJson(path.join(tempDir, '.envxrc'), {
+        ignore: ['staging', 'demo'],
+      });
+
+      const result = await FileUtils.getIgnorePatterns(sub);
+      expect(result).toEqual(['staging', 'demo']);
+    });
+
+    it('falls back to defaults when no .envxrc is found anywhere', async () => {
+      const sub = path.join(tempDir, 'packages', 'db');
+      await fs.ensureDir(sub);
+
+      const result = await FileUtils.getIgnorePatterns(sub);
+      expect(result).toEqual(FileUtils.DEFAULT_IGNORE_PATTERNS);
+    });
+
+    it('honors .envxrc.ignore in cwd (backward compat)', async () => {
+      await fs.writeJson(path.join(tempDir, '.envxrc'), {
+        ignore: ['only-local'],
+      });
+      const result = await FileUtils.getIgnorePatterns(tempDir);
+      expect(result).toEqual(['only-local']);
+    });
+
+    it('treats explicit empty ignore array as the escape hatch', async () => {
+      const sub = path.join(tempDir, 'packages', 'db');
+      await fs.ensureDir(sub);
+      await fs.writeJson(path.join(tempDir, '.envxrc'), { ignore: [] });
+
+      const result = await FileUtils.getIgnorePatterns(sub);
+      expect(result).toEqual([]);
+    });
+  });
+
+  describe('getExcludeDirs with upward discovery', () => {
+    let tempDir: string;
+
+    beforeEach(async () => {
+      tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'envx-excludeup-'));
+      tempDir = await fs.realpath(tempDir);
+    });
+
+    afterEach(async () => {
+      await fs.remove(tempDir);
+    });
+
+    it('honors .envxrc.excludeDirs from an ancestor directory', async () => {
+      const sub = path.join(tempDir, 'packages', 'db');
+      await fs.ensureDir(sub);
+      await fs.writeJson(path.join(tempDir, '.envxrc'), {
+        excludeDirs: ['vendor', 'legacy'],
+      });
+
+      const result = await FileUtils.getExcludeDirs(sub);
+      expect(result).toEqual(['vendor', 'legacy']);
+    });
+
+    it('falls back to defaults when no .envxrc is found anywhere', async () => {
+      const sub = path.join(tempDir, 'packages', 'db');
+      await fs.ensureDir(sub);
+
+      const result = await FileUtils.getExcludeDirs(sub);
+      expect(result).toEqual(FileUtils.DEFAULT_EXCLUDE_DIRS);
+    });
+  });
 });
