@@ -653,9 +653,15 @@ your-project/
 ├── .env.staging.gpg         # Encrypted (committed)
 ├── .env.production.gpg      # Encrypted (committed)
 ├── .envrc                   # Secrets (local only)
-├── .envxrc                  # Project config (local only)
+├── .envxrc                  # Project config (committed, shared)
 └── .gitignore               # Excludes .env.* but allows *.gpg
 ```
+
+### Monorepo support
+
+envx discovers `.envrc` (passphrases) and `.envxrc` (project config) by walking upward from the current working directory. Running `envx run -e dev -- pnpm migrate` from `packages/db/` in a turborepo will automatically use the `.envrc` at the repo root — no need to duplicate configuration in every package. The walk stops at the first ancestor containing any of `.envrc`, `.envxrc`, or `.git`, whichever comes first. Stage files (`.env.<stage>[.gpg]`) still resolve from the current directory only.
+
+`.envxrc` is now committed by default — it holds project configuration (ignore patterns, excluded directories, enrolled environments) that should be shared across the team. Only `.envrc` is git-ignored.
 
 ## Workflow Examples
 
@@ -707,7 +713,7 @@ envx copy -e production
 ```bash
 echo ".env.*" >> .gitignore
 echo "!*.gpg" >> .gitignore
-git add .env.production.gpg .envrc
+git add .env.production.gpg .envxrc
 git commit -m "Add encrypted production environment"
 ```
 
@@ -879,7 +885,8 @@ No files are created, modified, or deleted during a dry run.
 
 - Always encrypt production and staging environment files
 - Commit encrypted `.gpg` files to version control
-- Add `.envrc` and `.envxrc` to your `.gitignore`
+- Commit `.envxrc` so the team shares the same project configuration
+- Add `.envrc` to your `.gitignore` (it holds GPG passphrases)
 - Use strong, unique secrets for each environment
 - Regularly rotate encryption secrets
 - Use `envx status` to check your security posture
@@ -888,7 +895,7 @@ No files are created, modified, or deleted during a dry run.
 ### Don'ts
 
 - Never commit unencrypted `.env.*` files (except templates)
-- Don't commit `.envrc` or `.envxrc` files to version control
+- Don't commit `.envrc` files to version control (they hold GPG passphrases)
 - Don't use weak or predictable passphrases
 - Don't share secrets through insecure channels
 - Don't leave decrypted files in production environments
@@ -902,9 +909,8 @@ No files are created, modified, or deleted during a dry run.
 !.env.template
 !*.gpg
 
-# EnvX secrets and config
+# EnvX secrets (project config in .envxrc is committable)
 .envrc
-.envxrc
 ```
 
 ## Integration with Direnv

@@ -128,7 +128,7 @@ Each test uses a temp directory built via `fs.mkdtemp` and cleaned in `afterEach
 
 1. **Monorepo passphrase discovery.** Build a temp fixture with:
 
-   ```
+   ```text
    <tmp>/
      .envrc                # contains DEV_SECRET="<passphrase>"
      .envxrc               # any valid JSON
@@ -139,7 +139,7 @@ Each test uses a temp directory built via `fs.mkdtemp` and cleaned in `afterEach
 
    Run:
 
-   ```
+   ```bash
    envx run -e dev --cwd <tmp>/packages/db -- node -e "console.log(process.env.FOO)"
    ```
 

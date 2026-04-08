@@ -1,5 +1,6 @@
 import chalk from 'chalk';
 import { Command } from 'commander';
+import path from 'path';
 import { ExitCode } from '../types';
 import { CliUtils, ExecUtils } from '../utils/exec';
 import { FileUtils } from '../utils/file';
@@ -143,7 +144,17 @@ async function executeConfigShow(options: any): Promise<void> {
 
   CliUtils.header('EnvX Configuration');
 
-  const config = await FileUtils.readEnvxrc(cwd);
+  const envxrcDir = await FileUtils.findEnvxrcUpward(cwd);
+  const config = envxrcDir
+    ? await FileUtils.readEnvxrc(envxrcDir)
+    : await FileUtils.readEnvxrc(cwd);
+
+  if (envxrcDir && envxrcDir !== cwd) {
+    CliUtils.info(
+      `Reading from: ${chalk.cyan(path.join(envxrcDir, '.envxrc'))}`
+    );
+    console.log();
+  }
 
   if (Object.keys(config).length === 0) {
     CliUtils.info('No .envxrc found — using default configuration.');
@@ -194,7 +205,10 @@ async function executeIgnoreList(options: any): Promise<void> {
     return;
   }
 
-  const config = await FileUtils.readEnvxrc(cwd);
+  const envxrcDir = await FileUtils.findEnvxrcUpward(cwd);
+  const config = envxrcDir
+    ? await FileUtils.readEnvxrc(envxrcDir)
+    : await FileUtils.readEnvxrc(cwd);
   const isDefault = !config.ignore;
 
   if (isDefault) {
@@ -271,7 +285,10 @@ async function executeExcludeList(options: any): Promise<void> {
     return;
   }
 
-  const config = await FileUtils.readEnvxrc(cwd);
+  const envxrcDir = await FileUtils.findEnvxrcUpward(cwd);
+  const config = envxrcDir
+    ? await FileUtils.readEnvxrc(envxrcDir)
+    : await FileUtils.readEnvxrc(cwd);
   const isDefault = !config.excludeDirs;
 
   if (isDefault) {

@@ -301,9 +301,10 @@ async function processSingleEnvironment(
 
     // Get passphrase if not provided
     if (!passphrase || passphrase.trim() === '') {
-      // Try to get from .envrc file - use root directory for .envrc lookup
+      // Walk upward from the working directory to find the nearest .envrc.
+      // This makes copy work from monorepo subdirectories.
       const rootCwd = rawOptions.cwd || process.cwd();
-      const envrcConfig = await FileUtils.readEnvrc(rootCwd);
+      const envrcConfig = await FileUtils.readEnvrcNearest(rootCwd);
       const secretVar = FileUtils.generateSecretVariableName(environment);
 
       if (rawOptions.secret && envrcConfig[rawOptions.secret]) {

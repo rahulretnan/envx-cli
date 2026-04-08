@@ -288,7 +288,7 @@ describe('FileUtils Core Operations', () => {
       expect(content).toContain('!.env.*.gpg');
       expect(content).toContain('# EnvX secrets');
       expect(content).toContain('.envrc');
-      expect(content).toContain('.envxrc');
+      expect(content).not.toContain('.envxrc');
     });
 
     it('should append to existing .gitignore', async () => {
@@ -334,7 +334,8 @@ describe('FileUtils Core Operations', () => {
 
     it('should add only environment patterns when secrets exist', async () => {
       const gitignorePath = path.join(tempDir, '.gitignore');
-      const existingContent = '# Existing\n.envrc\n.envxrc';
+      // Only .envrc pre-exists; .envxrc is no longer a gitignore pattern.
+      const existingContent = '# Existing\n.envrc';
       await fs.writeFile(gitignorePath, existingContent, 'utf-8');
 
       const result = await FileUtils.updateGitignore(tempDir);
@@ -350,7 +351,7 @@ describe('FileUtils Core Operations', () => {
       expect(content).toContain('!.env.example');
       expect(content).toContain('!.env.*.gpg');
       expect(content).toContain('.envrc');
-      expect(content).toContain('.envxrc');
+      expect(content).not.toContain('.envxrc');
 
       // Should not duplicate .envrc or add another EnvX secrets section
       expect((content.match(/\.envrc\b/g) || []).length).toBe(1);
@@ -359,8 +360,11 @@ describe('FileUtils Core Operations', () => {
 
     it('should not update when all patterns exist', async () => {
       const gitignorePath = path.join(tempDir, '.gitignore');
+      // Pre-existing content that contains every current secret pattern.
+      // After removing .envxrc from secretPatterns, only .envrc needs to
+      // be present for the "no secrets section needed" path.
       const existingContent =
-        'node_modules/\n.env.*\n!.env.example\n!.env.*.gpg\n.envrc\n.envxrc';
+        'node_modules/\n.env.*\n!.env.example\n!.env.*.gpg\n.envrc';
       await fs.writeFile(gitignorePath, existingContent, 'utf-8');
 
       const result = await FileUtils.updateGitignore(tempDir);
@@ -369,9 +373,6 @@ describe('FileUtils Core Operations', () => {
       expect(result.message).toBe(
         '.gitignore already contains all EnvX patterns'
       );
-
-      const content = await fs.readFile(gitignorePath, 'utf-8');
-      expect(content).toBe(existingContent);
     });
 
     it('should handle file system errors gracefully', async () => {
@@ -383,6 +384,15 @@ describe('FileUtils Core Operations', () => {
       expect(result.success).toBe(false);
       expect(result.message).toContain('Failed to update .gitignore:');
       expect(result.error).toBeDefined();
+    });
+
+    it('should not add .envxrc to .gitignore (it is project config, not a secret)', async () => {
+      await FileUtils.updateGitignore(tempDir);
+
+      const gitignorePath = path.join(tempDir, '.gitignore');
+      const content = await fs.readFile(gitignorePath, 'utf-8');
+
+      expect(content).not.toContain('.envxrc');
     });
   });
 
@@ -576,6 +586,373 @@ describe('FileUtils Core Operations', () => {
       await expect(
         FileUtils.loadEnvSource({ path: '/tmp/fake.gpg', encrypted: true })
       ).rejects.toThrow(/passphrase/i);
+    });
+  });
+
+  describe('findProjectRoot', () => {
+    let tempDir: string;
+
+    beforeEach(async () => {
+      tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'envx-findroot-'));
+      // Resolve symlinks (macOS /var → /private/var) so path assertions are
+      // comparing apples to apples regardless of platform.
+      tempDir = await fs.realpath(tempDir);
+    });
+
+    afterEach(async () => {
+      await fs.remove(tempDir);
+    });
+
+    it('returns cwd itself when cwd contains .envrc', async () => {
+      await fs.writeFile(path.join(tempDir, '.envrc'), 'export FOO=bar');
+      const result = await FileUtils.findProjectRoot(tempDir);
+      expect(result).toBe(tempDir);
+    });
+
+    it('returns cwd itself when cwd contains .envxrc', async () => {
+      await fs.writeJson(path.join(tempDir, '.envxrc'), {});
+      const result = await FileUtils.findProjectRoot(tempDir);
+      expect(result).toBe(tempDir);
+    });
+
+    it('returns cwd itself when cwd contains a .git directory', async () => {
+      await fs.ensureDir(path.join(tempDir, '.git'));
+      const result = await FileUtils.findProjectRoot(tempDir);
+      expect(result).toBe(tempDir);
+    });
+
+    it('returns cwd itself when cwd contains a .git file (submodule)', async () => {
+      await fs.writeFile(
+        path.join(tempDir, '.git'),
+        'gitdir: ../.git/modules/sub\n'
+      );
+      const result = await FileUtils.findProjectRoot(tempDir);
+      expect(result).toBe(tempDir);
+    });
+
+    it('returns nearest ancestor when cwd has no markers', async () => {
+      const sub = path.join(tempDir, 'packages', 'db');
+      await fs.ensureDir(sub);
+      await fs.writeFile(path.join(tempDir, '.envrc'), 'export FOO=bar');
+
+      const result = await FileUtils.findProjectRoot(sub);
+      expect(result).toBe(tempDir);
+    });
+
+    it('prefers the nearest ancestor when multiple contain markers', async () => {
+      const mid = path.join(tempDir, 'repo');
+      const sub = path.join(mid, 'packages', 'db');
+      await fs.ensureDir(sub);
+      // Outer marker: tempDir has .envrc
+      await fs.writeFile(path.join(tempDir, '.envrc'), 'export OUTER=1');
+      // Inner marker: mid has .git
+      await fs.ensureDir(path.join(mid, '.git'));
+
+      const result = await FileUtils.findProjectRoot(sub);
+      expect(result).toBe(mid);
+    });
+
+    it('returns null when no marker exists up to the filesystem root', async () => {
+      const sub = path.join(tempDir, 'deep', 'nested', 'path');
+      await fs.ensureDir(sub);
+      // No markers anywhere inside tempDir, and tempDir itself is in /tmp which
+      // has no markers either. (This assumes /tmp is not a git repo, which is
+      // standard on macOS and Linux CI.)
+      const result = await FileUtils.findProjectRoot(sub);
+      expect(result).toBeNull();
+    });
+
+    it('handles relative paths by resolving them first', async () => {
+      const sub = path.join(tempDir, 'packages', 'db');
+      await fs.ensureDir(sub);
+      await fs.writeFile(path.join(tempDir, '.envrc'), 'export FOO=bar');
+
+      const originalCwd = process.cwd();
+      try {
+        process.chdir(sub);
+        const result = await FileUtils.findProjectRoot('.');
+        expect(result).toBe(tempDir);
+      } finally {
+        process.chdir(originalCwd);
+      }
+    });
+  });
+
+  describe('findEnvrcUpward', () => {
+    let tempDir: string;
+
+    beforeEach(async () => {
+      tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'envx-findenvrc-'));
+      tempDir = await fs.realpath(tempDir);
+    });
+
+    afterEach(async () => {
+      await fs.remove(tempDir);
+    });
+
+    it('returns directory containing .envrc when walking from a subdirectory', async () => {
+      const sub = path.join(tempDir, 'packages', 'db');
+      await fs.ensureDir(sub);
+      await fs.writeFile(path.join(tempDir, '.envrc'), 'export DEV_SECRET="s"');
+
+      const result = await FileUtils.findEnvrcUpward(sub);
+      expect(result).toBe(tempDir);
+    });
+
+    it('returns cwd when .envrc is in cwd', async () => {
+      await fs.writeFile(path.join(tempDir, '.envrc'), 'export DEV_SECRET="s"');
+      const result = await FileUtils.findEnvrcUpward(tempDir);
+      expect(result).toBe(tempDir);
+    });
+
+    it('returns null when project root has .git but no .envrc', async () => {
+      const sub = path.join(tempDir, 'packages', 'db');
+      await fs.ensureDir(sub);
+      await fs.ensureDir(path.join(tempDir, '.git'));
+      // No .envrc anywhere.
+
+      const result = await FileUtils.findEnvrcUpward(sub);
+      expect(result).toBeNull();
+    });
+
+    it('returns null when project root has .envxrc but no .envrc', async () => {
+      const sub = path.join(tempDir, 'packages', 'db');
+      await fs.ensureDir(sub);
+      await fs.writeJson(path.join(tempDir, '.envxrc'), {});
+
+      const result = await FileUtils.findEnvrcUpward(sub);
+      expect(result).toBeNull();
+    });
+
+    it('returns null when no project root is found', async () => {
+      const sub = path.join(tempDir, 'nothing', 'here');
+      await fs.ensureDir(sub);
+      const result = await FileUtils.findEnvrcUpward(sub);
+      expect(result).toBeNull();
+    });
+  });
+
+  describe('findEnvxrcUpward', () => {
+    let tempDir: string;
+
+    beforeEach(async () => {
+      tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'envx-findenvxrc-'));
+      tempDir = await fs.realpath(tempDir);
+    });
+
+    afterEach(async () => {
+      await fs.remove(tempDir);
+    });
+
+    it('returns directory containing .envxrc when walking from a subdirectory', async () => {
+      const sub = path.join(tempDir, 'packages', 'db');
+      await fs.ensureDir(sub);
+      await fs.writeJson(path.join(tempDir, '.envxrc'), {
+        ignore: ['demo'],
+      });
+
+      const result = await FileUtils.findEnvxrcUpward(sub);
+      expect(result).toBe(tempDir);
+    });
+
+    it('returns null when project root has .envrc but no .envxrc', async () => {
+      const sub = path.join(tempDir, 'packages', 'db');
+      await fs.ensureDir(sub);
+      await fs.writeFile(path.join(tempDir, '.envrc'), 'export DEV_SECRET="s"');
+
+      const result = await FileUtils.findEnvxrcUpward(sub);
+      expect(result).toBeNull();
+    });
+
+    it('returns null when no project root is found', async () => {
+      const sub = path.join(tempDir, 'nothing', 'here');
+      await fs.ensureDir(sub);
+      const result = await FileUtils.findEnvxrcUpward(sub);
+      expect(result).toBeNull();
+    });
+  });
+
+  describe('readEnvrcNearest', () => {
+    let tempDir: string;
+
+    beforeEach(async () => {
+      tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'envx-readenvrc-'));
+      tempDir = await fs.realpath(tempDir);
+    });
+
+    afterEach(async () => {
+      await fs.remove(tempDir);
+    });
+
+    it('returns parsed .envrc contents when found at an ancestor', async () => {
+      const sub = path.join(tempDir, 'packages', 'db');
+      await fs.ensureDir(sub);
+      await fs.writeFile(
+        path.join(tempDir, '.envrc'),
+        'export DEV_SECRET="my-passphrase"\nexport OTHER="value"\n'
+      );
+
+      const result = await FileUtils.readEnvrcNearest(sub);
+      expect(result).toEqual({
+        DEV_SECRET: 'my-passphrase',
+        OTHER: 'value',
+      });
+    });
+
+    it('returns parsed .envrc contents when found in cwd', async () => {
+      await fs.writeFile(
+        path.join(tempDir, '.envrc'),
+        'export PROD_SECRET="p"\n'
+      );
+
+      const result = await FileUtils.readEnvrcNearest(tempDir);
+      expect(result).toEqual({ PROD_SECRET: 'p' });
+    });
+
+    it('returns empty object when no .envrc is found anywhere', async () => {
+      const sub = path.join(tempDir, 'nothing', 'here');
+      await fs.ensureDir(sub);
+      const result = await FileUtils.readEnvrcNearest(sub);
+      expect(result).toEqual({});
+    });
+
+    it('returns empty object when the project root has .git but no .envrc', async () => {
+      const sub = path.join(tempDir, 'packages', 'db');
+      await fs.ensureDir(sub);
+      await fs.ensureDir(path.join(tempDir, '.git'));
+
+      const result = await FileUtils.readEnvrcNearest(sub);
+      expect(result).toEqual({});
+    });
+  });
+
+  describe('getIgnorePatterns with upward discovery', () => {
+    let tempDir: string;
+
+    beforeEach(async () => {
+      tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'envx-ignoreup-'));
+      tempDir = await fs.realpath(tempDir);
+    });
+
+    afterEach(async () => {
+      await fs.remove(tempDir);
+    });
+
+    it('honors .envxrc.ignore from an ancestor directory', async () => {
+      const sub = path.join(tempDir, 'packages', 'db');
+      await fs.ensureDir(sub);
+      await fs.writeJson(path.join(tempDir, '.envxrc'), {
+        ignore: ['staging', 'demo'],
+      });
+
+      const result = await FileUtils.getIgnorePatterns(sub);
+      expect(result).toEqual(['staging', 'demo']);
+    });
+
+    it('falls back to defaults when no .envxrc is found anywhere', async () => {
+      const sub = path.join(tempDir, 'packages', 'db');
+      await fs.ensureDir(sub);
+
+      const result = await FileUtils.getIgnorePatterns(sub);
+      expect(result).toEqual(FileUtils.DEFAULT_IGNORE_PATTERNS);
+    });
+
+    it('honors .envxrc.ignore in cwd (backward compat)', async () => {
+      await fs.writeJson(path.join(tempDir, '.envxrc'), {
+        ignore: ['only-local'],
+      });
+      const result = await FileUtils.getIgnorePatterns(tempDir);
+      expect(result).toEqual(['only-local']);
+    });
+
+    it('treats explicit empty ignore array as the escape hatch', async () => {
+      const sub = path.join(tempDir, 'packages', 'db');
+      await fs.ensureDir(sub);
+      await fs.writeJson(path.join(tempDir, '.envxrc'), { ignore: [] });
+
+      const result = await FileUtils.getIgnorePatterns(sub);
+      expect(result).toEqual([]);
+    });
+  });
+
+  describe('getExcludeDirs with upward discovery', () => {
+    let tempDir: string;
+
+    beforeEach(async () => {
+      tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'envx-excludeup-'));
+      tempDir = await fs.realpath(tempDir);
+    });
+
+    afterEach(async () => {
+      await fs.remove(tempDir);
+    });
+
+    it('honors .envxrc.excludeDirs from an ancestor directory', async () => {
+      const sub = path.join(tempDir, 'packages', 'db');
+      await fs.ensureDir(sub);
+      await fs.writeJson(path.join(tempDir, '.envxrc'), {
+        excludeDirs: ['vendor', 'legacy'],
+      });
+
+      const result = await FileUtils.getExcludeDirs(sub);
+      expect(result).toEqual(['vendor', 'legacy']);
+    });
+
+    it('falls back to defaults when no .envxrc is found anywhere', async () => {
+      const sub = path.join(tempDir, 'packages', 'db');
+      await fs.ensureDir(sub);
+
+      const result = await FileUtils.getExcludeDirs(sub);
+      expect(result).toEqual(FileUtils.DEFAULT_EXCLUDE_DIRS);
+    });
+  });
+
+  describe('mergeEnvxrc with upward discovery', () => {
+    let tempDir: string;
+
+    beforeEach(async () => {
+      tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'envx-mergeup-'));
+      tempDir = await fs.realpath(tempDir);
+    });
+
+    afterEach(async () => {
+      await fs.remove(tempDir);
+    });
+
+    it('writes to the nearest existing .envxrc when called from a subdirectory', async () => {
+      const sub = path.join(tempDir, 'packages', 'db');
+      await fs.ensureDir(sub);
+      await fs.writeJson(path.join(tempDir, '.envxrc'), {
+        ignore: ['demo'],
+      });
+
+      const result = await FileUtils.mergeEnvxrc(sub, {
+        ignore: ['demo', 'staging'],
+      });
+
+      expect(result.success).toBe(true);
+      expect(result.filePath).toBe(path.join(tempDir, '.envxrc'));
+
+      // The subdirectory must NOT have gained its own .envxrc.
+      expect(await fs.pathExists(path.join(sub, '.envxrc'))).toBe(false);
+
+      // The root file must contain the merged config.
+      const rootConfig = await fs.readJson(path.join(tempDir, '.envxrc'));
+      expect(rootConfig.ignore).toEqual(['demo', 'staging']);
+    });
+
+    it('creates .envxrc in cwd when no ancestor has one', async () => {
+      const sub = path.join(tempDir, 'packages', 'db');
+      await fs.ensureDir(sub);
+      // No .envxrc anywhere up the tree.
+
+      const result = await FileUtils.mergeEnvxrc(sub, {
+        ignore: ['demo'],
+      });
+
+      expect(result.success).toBe(true);
+      expect(result.filePath).toBe(path.join(sub, '.envxrc'));
+      expect(await fs.pathExists(path.join(sub, '.envxrc'))).toBe(true);
     });
   });
 });

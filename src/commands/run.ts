@@ -314,7 +314,7 @@ export async function executeRun(
     if (rawOptions.passphrase) {
       passphrase = String(rawOptions.passphrase);
     } else {
-      const envrc = await FileUtils.readEnvrc(cwd);
+      const envrc = await FileUtils.readEnvrcNearest(cwd);
       const stageSource = rawSources.find(
         (r): r is { kind: 'stage'; stage: string } => r.kind === 'stage'
       );

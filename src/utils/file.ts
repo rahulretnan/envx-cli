@@ -81,30 +81,48 @@ export class FileUtils {
   }
 
   /**
-   * Merge partial config into existing .envxrc
+   * Merge partial config into the nearest existing `.envxrc`.
+   *
+   * Walks upward from `cwd` via findEnvxrcUpward. If a file is found,
+   * writes the merged result to that ancestor (so `envx config …` from a
+   * monorepo subdirectory edits the root config, not a package-local
+   * shadow). Falls back to creating `.envxrc` in `cwd` only when no
+   * ancestor has one (greenfield behavior).
    */
   static async mergeEnvxrc(
     cwd: string,
     partial: Partial<EnvxrcConfig>
   ): Promise<FileOperationResult> {
-    const existing = await this.readEnvxrc(cwd);
+    const targetDir = (await this.findEnvxrcUpward(cwd)) ?? cwd;
+    const existing = await this.readEnvxrc(targetDir);
     const merged: EnvxrcConfig = { ...existing, ...partial };
-    return this.writeEnvxrc(cwd, merged);
+    return this.writeEnvxrc(targetDir, merged);
   }
 
   /**
-   * Get ignore patterns from .envxrc or defaults
+   * Get ignore patterns from the nearest `.envxrc` (walking upward) or
+   * defaults. An explicit empty array in `.envxrc.ignore` is respected
+   * as the "disable filtering" escape hatch.
    */
   static async getIgnorePatterns(cwd: string): Promise<string[]> {
-    const config = await this.readEnvxrc(cwd);
+    const dir = await this.findEnvxrcUpward(cwd);
+    if (dir === null) {
+      return this.DEFAULT_IGNORE_PATTERNS;
+    }
+    const config = await this.readEnvxrc(dir);
     return config.ignore ?? this.DEFAULT_IGNORE_PATTERNS;
   }
 
   /**
-   * Get excluded directories from .envxrc or defaults
+   * Get excluded directories from the nearest `.envxrc` (walking upward)
+   * or defaults.
    */
   static async getExcludeDirs(cwd: string): Promise<string[]> {
-    const config = await this.readEnvxrc(cwd);
+    const dir = await this.findEnvxrcUpward(cwd);
+    if (dir === null) {
+      return this.DEFAULT_EXCLUDE_DIRS;
+    }
+    const config = await this.readEnvxrc(dir);
     return config.excludeDirs ?? this.DEFAULT_EXCLUDE_DIRS;
   }
 
@@ -222,6 +240,101 @@ export class FileUtils {
     } catch {
       return false;
     }
+  }
+
+  /**
+   * Returns true if `fs.stat` succeeds on the given path, regardless of
+   * entry type (file OR directory). Used by findProjectRoot to detect
+   * `.git` which may be a directory (normal repo) or a file (submodule).
+   *
+   * Distinct from fileExists(), which rejects directories.
+   */
+  private static async entryExists(entryPath: string): Promise<boolean> {
+    try {
+      await fs.stat(entryPath);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Walk upward from `cwd` returning the first ancestor (or `cwd` itself)
+   * that contains any of `.envrc`, `.envxrc`, or `.git`. Returns `null` if
+   * the walk reaches the filesystem root without finding a marker.
+   *
+   * Used to determine the "project root" for config discovery in monorepos.
+   * Not aware of symlinks — the input is resolved once via path.resolve and
+   * then walked as-given (no fs.realpath on each step).
+   */
+  static async findProjectRoot(cwd: string): Promise<string | null> {
+    const markers = ['.envrc', '.envxrc', '.git'];
+    let current = path.resolve(cwd);
+
+    for (;;) {
+      for (const marker of markers) {
+        if (await this.entryExists(path.join(current, marker))) {
+          return current;
+        }
+      }
+
+      const parent = path.dirname(current);
+      if (parent === current) {
+        // Hit the filesystem root (POSIX '/' or Windows 'C:\\').
+        return null;
+      }
+      current = parent;
+    }
+  }
+
+  /**
+   * Walk upward from `cwd` and return the directory containing the nearest
+   * `.envrc`. Returns `null` if the project root (as determined by
+   * findProjectRoot) does not contain `.envrc`, or if no project root is
+   * found at all.
+   *
+   * Callers should fall back to their existing no-config path when this
+   * returns null (e.g., prompt for passphrase interactively).
+   */
+  static async findEnvrcUpward(cwd: string): Promise<string | null> {
+    const root = await this.findProjectRoot(cwd);
+    if (root === null) {
+      return null;
+    }
+    const envrcExists = await this.fileExists(path.join(root, '.envrc'));
+    return envrcExists ? root : null;
+  }
+
+  /**
+   * Walk upward from `cwd` and return the directory containing the nearest
+   * `.envxrc`. Returns `null` if the project root does not contain
+   * `.envxrc`, or if no project root is found at all.
+   *
+   * Callers should fall back to defaults when this returns null.
+   */
+  static async findEnvxrcUpward(cwd: string): Promise<string | null> {
+    const root = await this.findProjectRoot(cwd);
+    if (root === null) {
+      return null;
+    }
+    const envxrcExists = await this.fileExists(path.join(root, '.envxrc'));
+    return envxrcExists ? root : null;
+  }
+
+  /**
+   * Read the nearest `.envrc` by walking upward from `cwd` via
+   * findEnvrcUpward. Returns parsed key/value pairs.
+   *
+   * Returns an empty object if no `.envrc` is found anywhere along the
+   * walk — callers can treat this exactly like "no .envrc in cwd", which
+   * is the existing contract for readEnvrc.
+   */
+  static async readEnvrcNearest(cwd: string): Promise<EnvrcConfig> {
+    const dir = await this.findEnvrcUpward(cwd);
+    if (dir === null) {
+      return {};
+    }
+    return this.readEnvrc(dir);
   }
 
   /**
@@ -523,7 +636,7 @@ export class FileUtils {
     const gitignorePath = path.join(cwd, '.gitignore');
 
     const envPatterns = ['.env.*', '!.env.example', '!.env.*.gpg'];
-    const secretPatterns = ['.envrc', '.envxrc'];
+    const secretPatterns = ['.envrc'];
 
     try {
       let existingContent = '';
