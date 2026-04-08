@@ -304,6 +304,22 @@ export class FileUtils {
   }
 
   /**
+   * Read the nearest `.envrc` by walking upward from `cwd` via
+   * findEnvrcUpward. Returns parsed key/value pairs.
+   *
+   * Returns an empty object if no `.envrc` is found anywhere along the
+   * walk — callers can treat this exactly like "no .envrc in cwd", which
+   * is the existing contract for readEnvrc.
+   */
+  static async readEnvrcNearest(cwd: string): Promise<EnvrcConfig> {
+    const dir = await this.findEnvrcUpward(cwd);
+    if (dir === null) {
+      return {};
+    }
+    return this.readEnvrc(dir);
+  }
+
+  /**
    * Create backup of a file
    */
   static async createBackup(filePath: string): Promise<string> {

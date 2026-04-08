@@ -761,4 +761,58 @@ describe('FileUtils Core Operations', () => {
       expect(result).toBeNull();
     });
   });
+
+  describe('readEnvrcNearest', () => {
+    let tempDir: string;
+
+    beforeEach(async () => {
+      tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'envx-readenvrc-'));
+      tempDir = await fs.realpath(tempDir);
+    });
+
+    afterEach(async () => {
+      await fs.remove(tempDir);
+    });
+
+    it('returns parsed .envrc contents when found at an ancestor', async () => {
+      const sub = path.join(tempDir, 'packages', 'db');
+      await fs.ensureDir(sub);
+      await fs.writeFile(
+        path.join(tempDir, '.envrc'),
+        'export DEV_SECRET="my-passphrase"\nexport OTHER="value"\n'
+      );
+
+      const result = await FileUtils.readEnvrcNearest(sub);
+      expect(result).toEqual({
+        DEV_SECRET: 'my-passphrase',
+        OTHER: 'value',
+      });
+    });
+
+    it('returns parsed .envrc contents when found in cwd', async () => {
+      await fs.writeFile(
+        path.join(tempDir, '.envrc'),
+        'export PROD_SECRET="p"\n'
+      );
+
+      const result = await FileUtils.readEnvrcNearest(tempDir);
+      expect(result).toEqual({ PROD_SECRET: 'p' });
+    });
+
+    it('returns empty object when no .envrc is found anywhere', async () => {
+      const sub = path.join(tempDir, 'nothing', 'here');
+      await fs.ensureDir(sub);
+      const result = await FileUtils.readEnvrcNearest(sub);
+      expect(result).toEqual({});
+    });
+
+    it('returns empty object when the project root has .git but no .envrc', async () => {
+      const sub = path.join(tempDir, 'packages', 'db');
+      await fs.ensureDir(sub);
+      await fs.ensureDir(path.join(tempDir, '.git'));
+
+      const result = await FileUtils.readEnvrcNearest(sub);
+      expect(result).toEqual({});
+    });
+  });
 });
