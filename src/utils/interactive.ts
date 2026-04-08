@@ -239,7 +239,7 @@ export class InteractiveUtils {
 
       if (!overwrite) {
         CliUtils.info('Keeping existing .envrc file');
-        return await FileUtils.readEnvrc(cwd);
+        return await FileUtils.readEnvrcNearest(cwd);
       }
     }
 

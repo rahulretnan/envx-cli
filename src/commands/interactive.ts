@@ -64,7 +64,7 @@ export async function executeInteractive(rawOptions: any): Promise<void> {
 
       if (showCurrent) {
         try {
-          const currentConfig = await FileUtils.readEnvrc(cwd);
+          const currentConfig = await FileUtils.readEnvrcNearest(cwd);
           const secrets = Object.keys(currentConfig).filter(key =>
             key.endsWith('_SECRET')
           );
@@ -142,7 +142,7 @@ async function showEnvrcUsageHelp(cwd: string): Promise<void> {
   console.log();
   CliUtils.subheader('How to Use .envrc');
 
-  const envrcConfig = await FileUtils.readEnvrc(cwd);
+  const envrcConfig = await FileUtils.readEnvrcNearest(cwd);
   const secrets = Object.keys(envrcConfig).filter(key =>
     key.endsWith('_SECRET')
   );
