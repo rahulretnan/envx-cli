@@ -667,4 +667,98 @@ describe('FileUtils Core Operations', () => {
       }
     });
   });
+
+  describe('findEnvrcUpward', () => {
+    let tempDir: string;
+
+    beforeEach(async () => {
+      tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'envx-findenvrc-'));
+      tempDir = await fs.realpath(tempDir);
+    });
+
+    afterEach(async () => {
+      await fs.remove(tempDir);
+    });
+
+    it('returns directory containing .envrc when walking from a subdirectory', async () => {
+      const sub = path.join(tempDir, 'packages', 'db');
+      await fs.ensureDir(sub);
+      await fs.writeFile(path.join(tempDir, '.envrc'), 'export DEV_SECRET="s"');
+
+      const result = await FileUtils.findEnvrcUpward(sub);
+      expect(result).toBe(tempDir);
+    });
+
+    it('returns cwd when .envrc is in cwd', async () => {
+      await fs.writeFile(path.join(tempDir, '.envrc'), 'export DEV_SECRET="s"');
+      const result = await FileUtils.findEnvrcUpward(tempDir);
+      expect(result).toBe(tempDir);
+    });
+
+    it('returns null when project root has .git but no .envrc', async () => {
+      const sub = path.join(tempDir, 'packages', 'db');
+      await fs.ensureDir(sub);
+      await fs.ensureDir(path.join(tempDir, '.git'));
+      // No .envrc anywhere.
+
+      const result = await FileUtils.findEnvrcUpward(sub);
+      expect(result).toBeNull();
+    });
+
+    it('returns null when project root has .envxrc but no .envrc', async () => {
+      const sub = path.join(tempDir, 'packages', 'db');
+      await fs.ensureDir(sub);
+      await fs.writeJson(path.join(tempDir, '.envxrc'), {});
+
+      const result = await FileUtils.findEnvrcUpward(sub);
+      expect(result).toBeNull();
+    });
+
+    it('returns null when no project root is found', async () => {
+      const sub = path.join(tempDir, 'nothing', 'here');
+      await fs.ensureDir(sub);
+      const result = await FileUtils.findEnvrcUpward(sub);
+      expect(result).toBeNull();
+    });
+  });
+
+  describe('findEnvxrcUpward', () => {
+    let tempDir: string;
+
+    beforeEach(async () => {
+      tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'envx-findenvxrc-'));
+      tempDir = await fs.realpath(tempDir);
+    });
+
+    afterEach(async () => {
+      await fs.remove(tempDir);
+    });
+
+    it('returns directory containing .envxrc when walking from a subdirectory', async () => {
+      const sub = path.join(tempDir, 'packages', 'db');
+      await fs.ensureDir(sub);
+      await fs.writeJson(path.join(tempDir, '.envxrc'), {
+        ignore: ['demo'],
+      });
+
+      const result = await FileUtils.findEnvxrcUpward(sub);
+      expect(result).toBe(tempDir);
+    });
+
+    it('returns null when project root has .envrc but no .envxrc', async () => {
+      const sub = path.join(tempDir, 'packages', 'db');
+      await fs.ensureDir(sub);
+      await fs.writeFile(path.join(tempDir, '.envrc'), 'export DEV_SECRET="s"');
+
+      const result = await FileUtils.findEnvxrcUpward(sub);
+      expect(result).toBeNull();
+    });
+
+    it('returns null when no project root is found', async () => {
+      const sub = path.join(tempDir, 'nothing', 'here');
+      await fs.ensureDir(sub);
+      const result = await FileUtils.findEnvxrcUpward(sub);
+      expect(result).toBeNull();
+    });
+  });
 });

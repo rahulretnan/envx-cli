@@ -270,6 +270,40 @@ export class FileUtils {
   }
 
   /**
+   * Walk upward from `cwd` and return the directory containing the nearest
+   * `.envrc`. Returns `null` if the project root (as determined by
+   * findProjectRoot) does not contain `.envrc`, or if no project root is
+   * found at all.
+   *
+   * Callers should fall back to their existing no-config path when this
+   * returns null (e.g., prompt for passphrase interactively).
+   */
+  static async findEnvrcUpward(cwd: string): Promise<string | null> {
+    const root = await this.findProjectRoot(cwd);
+    if (root === null) {
+      return null;
+    }
+    const envrcExists = await this.fileExists(path.join(root, '.envrc'));
+    return envrcExists ? root : null;
+  }
+
+  /**
+   * Walk upward from `cwd` and return the directory containing the nearest
+   * `.envxrc`. Returns `null` if the project root does not contain
+   * `.envxrc`, or if no project root is found at all.
+   *
+   * Callers should fall back to defaults when this returns null.
+   */
+  static async findEnvxrcUpward(cwd: string): Promise<string | null> {
+    const root = await this.findProjectRoot(cwd);
+    if (root === null) {
+      return null;
+    }
+    const envxrcExists = await this.fileExists(path.join(root, '.envxrc'));
+    return envxrcExists ? root : null;
+  }
+
+  /**
    * Create backup of a file
    */
   static async createBackup(filePath: string): Promise<string> {
