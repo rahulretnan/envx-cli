@@ -215,3 +215,18 @@ export const validateCopyOptions = (data: unknown) => {
   }
   return validateSchema(copySchema, data);
 };
+
+export const runSchema = z.object({
+  environment: z.string().optional(),
+  envFile: z.array(z.string()).optional(),
+  env: z.array(z.string()).optional(),
+  passphrase: z.string().optional(),
+  cwd: z.string().optional(),
+  overload: z.boolean().optional(),
+  dryRun: z.boolean().optional(),
+});
+
+export type RunSchemaType = z.infer<typeof runSchema>;
+
+export const validateRunOptions = (data: unknown) =>
+  validateSchema(runSchema, data);
