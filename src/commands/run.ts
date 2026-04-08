@@ -195,9 +195,15 @@ export const createRunCommand = (): Command => {
       '--dry-run',
       'Print what would be injected without running the command'
     )
+    // Commander treats `--` as an argv terminator: everything after it
+    // lands in `cmd.args` untouched. That's exactly the behavior we want
+    // for `envx run ... -- <command>`. We deliberately do NOT use
+    // .passThroughOptions() here because it requires
+    // .enablePositionalOptions() on the root program, which would break
+    // existing usages like `envx encrypt -e prod -q -p pass` where the
+    // global -q/-v flags are placed after the subcommand name.
     .allowUnknownOption(true)
     .allowExcessArguments(true)
-    .passThroughOptions()
     .action(async (options, cmd: Command) => {
       try {
         await executeRun(options, cmd.args);

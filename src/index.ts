@@ -28,7 +28,6 @@ async function createProgram(): Promise<Command> {
     .name('envx')
     .description('Environment file encryption and management tool')
     .version(packageJson.version)
-    .enablePositionalOptions()
     .option('-v, --verbose', 'Enable verbose output')
     .option('-q, --quiet', 'Suppress non-error output')
     .hook('preAction', async thisCommand => {
