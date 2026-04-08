@@ -55,6 +55,7 @@ Each command file in `src/commands/` exports a `createXxxCommand()` function ret
 - **`create`** — Create new `.env.<stage>` files (optionally from a template).
 - **`copy`** — Copy a stage file to plain `.env`. Note: `--all` here means _all directories_ containing that environment, so `-e/--environment` is **required** when `--all` is used (different semantics from encrypt/decrypt).
 - **`interactive`** — Inquirer-driven setup for secrets in `.envrc`.
+- **`run`** — Decrypt an env file in memory and spawn a sub-process with variables injected via `process.env`. Supports `-e <stage>`, repeatable `-f/--env-file`, repeatable `--env KEY=VAL`, `--overload`, and `--dry-run`. dotenvx-style precedence: `process.env` wins over files by default. Never writes plaintext to disk. See `docs/superpowers/specs/2026-04-07-envx-run-design.md` for the full design.
 - **`config`** — Manage `.envxrc`. Subcommands: `show`, `ignore list/add/remove`, `exclude list/add/remove`, `reset`.
 
 ### Utility Classes (Static Methods)
