@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [1.4.2](https://github.com/rahulretnan/envx-cli/compare/v1.4.1...v1.4.2) (2026-04-08)
+
+
+### Bug Fixes
+
+* **config:** resolve .envxrc upward and show resolved path ([4e9e64c](https://github.com/rahulretnan/envx-cli/commit/4e9e64cf31ae1994eb0bd152cb21af3eacd70d33))
+* **encrypt,decrypt,copy:** resolve .envrc upward for monorepo subdirs ([0448ede](https://github.com/rahulretnan/envx-cli/commit/0448edeeabc93d3d0eb34a83f03bfeb12141493c))
+* **file:** do not gitignore .envxrc — it is committable project config ([8d9317b](https://github.com/rahulretnan/envx-cli/commit/8d9317b1bc2df5ae17609034e2ce5bf50ecd0f42))
+* **interactive:** resolve .envrc upward in setup flow ([5643db6](https://github.com/rahulretnan/envx-cli/commit/5643db62937a66804e5235a8d7e485a2b85f981a))
+* **run:** resolve .envrc upward for monorepo subdirectories ([767a9ad](https://github.com/rahulretnan/envx-cli/commit/767a9adf388bf8c7d0d9a76e6b5a69d9a449263b))
+
+
+### Features
+
+* **file:** add findEnvrcUpward and findEnvxrcUpward helpers ([1c5d7c9](https://github.com/rahulretnan/envx-cli/commit/1c5d7c945eae20d89817b246237c23c5e15a6d0e))
+* **file:** add findProjectRoot helper ([5d35dd0](https://github.com/rahulretnan/envx-cli/commit/5d35dd0c519f2222746e69d78fa2ed72a44fc398))
+* **file:** add readEnvrcNearest convenience wrapper ([b39d3a4](https://github.com/rahulretnan/envx-cli/commit/b39d3a4dee7bdfebde1fbd24dc16b8068ac19928))
+* **file:** resolve .envxrc upward for ignore/exclude patterns ([04f25c4](https://github.com/rahulretnan/envx-cli/commit/04f25c41b0855407c973b89a010dee4c62b335ae))
+* **file:** write .envxrc to nearest existing file ([5b8fc4c](https://github.com/rahulretnan/envx-cli/commit/5b8fc4c08f9683507f78597708b976f750ab8f54))
+
 ## [1.4.1](https://github.com/rahulretnan/envx-cli/compare/v1.4.0...v1.4.1) (2026-04-08)
 
 
