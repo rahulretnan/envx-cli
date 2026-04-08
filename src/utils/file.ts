@@ -252,26 +252,21 @@ export class FileUtils {
   static async findProjectRoot(cwd: string): Promise<string | null> {
     const markers = ['.envrc', '.envxrc', '.git'];
     let current = path.resolve(cwd);
-    let parent = path.dirname(current);
 
-    while (parent !== current) {
+    for (;;) {
       for (const marker of markers) {
         if (await this.entryExists(path.join(current, marker))) {
           return current;
         }
       }
-      current = parent;
-      parent = path.dirname(current);
-    }
 
-    // Check the filesystem root itself.
-    for (const marker of markers) {
-      if (await this.entryExists(path.join(current, marker))) {
-        return current;
+      const parent = path.dirname(current);
+      if (parent === current) {
+        // Hit the filesystem root (POSIX '/' or Windows 'C:\\').
+        return null;
       }
+      current = parent;
     }
-
-    return null;
   }
 
   /**
