@@ -22,6 +22,7 @@ Environment file encryption and management tool for secure development workflows
   - [envx copy](#envx-copy)
   - [envx status](#envx-status)
   - [envx config](#envx-config)
+  - [envx run](#envx-run)
 - [Configuration](#configuration)
   - [.envrc File](#envrc-file)
   - [.envxrc File (Project Config)](#envxrc-file-project-config)
@@ -460,6 +461,70 @@ Reset the configuration to defaults, removing all custom ignore patterns and dir
 ```bash
 envx config reset
 ```
+
+### `envx run`
+
+Decrypts an env file **in memory** and runs a command with those variables injected into its environment. Inspired by `dotenvx run`.
+
+**The defining property: plaintext secrets never touch the disk.** Decryption happens in-process; the decrypted content is parsed in memory and passed to the spawned sub-process via its environment. When the sub-process exits, the plaintext is gone.
+
+#### Usage
+
+```bash
+envx run [options] -- <command> [args...]
+```
+
+The `--` separator is recommended — everything after it is passed literally to the sub-process.
+
+#### Options
+
+| Flag                            | Description                                                                                                       |
+| ------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `-e, --environment <stage>`     | Stage to load. Resolves to `<cwd>/.env.<stage>.gpg` (preferred) or `<cwd>/.env.<stage>`. cwd-only — no recursion. |
+| `-f, --env-file <path>`         | Explicit env file (repeatable). Encryption auto-detected by `.gpg` extension.                                     |
+| `--env <KEY=VAL>`               | Inline override (repeatable). Wins over file values (subject to `--overload`).                                    |
+| `-p, --passphrase <passphrase>` | GPG passphrase. Only used when any source is encrypted. Falls back to `.envrc` then interactive prompt.           |
+| `-c, --cwd <path>`              | Working directory for file resolution and the sub-process (default: `process.cwd()`).                             |
+| `--overload`                    | Let files and inline overrides beat existing `process.env` values.                                                |
+| `--dry-run`                     | Print resolved source list and injected key names, then exit. Never prints values.                                |
+
+#### Examples
+
+```bash
+# Run a node server with production secrets
+envx run -e production -- node server.js
+
+# Dev mode from a plain file
+envx run -f .env.local -- npm run dev
+
+# Multiple files — later wins
+envx run -f .env -f .env.local -- vitest
+
+# Stage plus an inline override
+envx run -e staging --env LOG_LEVEL=debug -- npm test
+
+# Stage plus an extra file to override select keys
+envx run -e production -f .env.overrides --overload -- npm start
+
+# Inspect what would be injected without running anything
+envx run -e production --dry-run -- npm start
+```
+
+#### Precedence rules
+
+`envx run` uses dotenvx-style precedence by default:
+
+1. **`process.env` wins over file values** unless you pass `--overload`. This makes it safe to invoke from a shell that already has some variables set (`NODE_ENV`, `PATH`, etc.) — they won't be silently overwritten by file contents.
+2. **Within the source list**, later sources override earlier ones. The order is: stage (`-e`) → files (`-f`, in argv order) → inline (`--env`, in argv order). Inline overrides always sit last and therefore beat file values.
+3. **When both `.env.<stage>` and `.env.<stage>.gpg` exist**, the encrypted file wins. The encrypted file is the source of truth; the plain file is a working copy.
+4. **`${VAR}` expansion** inside env values is supported via `dotenv-expand`. References resolve against the current file's own keys plus `process.env` at parse time. Command substitution (`$(...)`) is NOT supported.
+
+#### Security notes
+
+- The spawn helper uses `shell: false`, so argv values are passed literally to the underlying executable. Shell features (`$VAR`, `&&`, `|`, globs) are **not** interpreted in argv. Users who need shell features must wrap their command explicitly: `envx run -e prod -- sh -c 'cmd1 && cmd2'`.
+- The `--dry-run` output contains key names only — never values. It's safe to paste into issues or logs.
+- On decryption failure (wrong passphrase, corrupt file), `envx run` exits with a non-zero code and **does not** fall back to a plain `.env.<stage>` file if one exists. Encrypted-wins means encrypted is the source of truth; silent fallback would hide bugs.
+- The sub-process's exit code propagates back. If `npm test` exits 1, `envx run -e test -- npm test` also exits 1.
 
 ## Configuration
 
