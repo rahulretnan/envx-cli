@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [1.4.1](https://github.com/rahulretnan/envx-cli/compare/v1.4.0...v1.4.1) (2026-04-08)
+
+
+### Bug Fixes
+
+* **run:** avoid breaking global flags on other commands ([d71f251](https://github.com/rahulretnan/envx-cli/commit/d71f2516ac9f7d25ae21d64b1fbdf746fb49856a)), closes [#1](https://github.com/rahulretnan/envx-cli/issues/1)
+
 # [1.4.0](https://github.com/rahulretnan/envx-cli/compare/v1.3.1...v1.4.0) (2026-04-08)
 
 
