@@ -71,13 +71,15 @@ All utilities in `src/utils/` use static class methods, not instances:
 
 Two distinct config files live alongside each project:
 
-- **`.envrc`** — direnv-style shell file (`export KEY="val"`). Holds the GPG passphrase(s). Git-ignored.
-- **`.envxrc`** — JSON project config with optional fields:
+- **`.envrc`** — direnv-style shell file (`export KEY="val"`). Holds the GPG passphrase(s). Git-ignored. **Discovered by walking upward from `cwd` via `FileUtils.readEnvrcNearest`** — commands run from a monorepo subdirectory find the `.envrc` at the repo root.
+- **`.envxrc`** — JSON project config. **Committable and meant to be shared.** Discovered by walking upward via `FileUtils.findEnvxrcUpward`. Optional fields:
   - `ignore: string[]` — environment names to skip during discovery (case-insensitive exact match). When unset, falls back to `FileUtils.DEFAULT_IGNORE_PATTERNS`. An empty array `[]` is the explicit "no filtering" escape hatch.
   - `excludeDirs: string[]` — directory names excluded from `fast-glob` walks. When unset, falls back to `FileUtils.DEFAULT_EXCLUDE_DIRS`.
   - `environments: string[]` — environments the user opted into managing during `envx init`.
 
   Read/write through `FileUtils.readEnvxrc`, `writeEnvxrc`, and `mergeEnvxrc`. Validated by `envxrcFileConfigSchema` in `src/schemas/index.ts` (named to avoid collision with the older `envrcConfigSchema`).
+
+  The upward walk stops at the first ancestor containing any of `.envrc`, `.envxrc`, or `.git` — that ancestor is treated as the project root. If the project root doesn't contain the specific file being looked up, the walk returns `null` and callers fall back to their existing no-config behavior (e.g., passphrase prompt). Writes via `FileUtils.mergeEnvxrc` target the nearest existing `.envxrc`, so `envx config ignore add` from a subdirectory edits the root config.
 
 ### Environment Discovery
 
