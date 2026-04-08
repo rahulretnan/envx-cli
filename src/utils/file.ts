@@ -636,7 +636,7 @@ export class FileUtils {
     const gitignorePath = path.join(cwd, '.gitignore');
 
     const envPatterns = ['.env.*', '!.env.example', '!.env.*.gpg'];
-    const secretPatterns = ['.envrc', '.envxrc'];
+    const secretPatterns = ['.envrc'];
 
     try {
       let existingContent = '';
