@@ -196,6 +196,7 @@ export const createRunCommand = (): Command => {
       'Print what would be injected without running the command'
     )
     .allowUnknownOption(true)
+    .allowExcessArguments(true)
     .passThroughOptions()
     .action(async (options, cmd: Command) => {
       try {

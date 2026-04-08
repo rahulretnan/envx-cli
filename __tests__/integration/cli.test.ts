@@ -23,7 +23,8 @@ describe('CLI Integration Tests', () => {
   });
 
   const runCli = (
-    command: string
+    command: string,
+    options: { env?: Record<string, string | undefined> } = {}
   ): { stdout: string; stderr: string; code: number } => {
     try {
       const stdout = execSync(
@@ -31,6 +32,7 @@ describe('CLI Integration Tests', () => {
         {
           encoding: 'utf8',
           cwd: testDir,
+          env: options.env ?? process.env,
         }
       );
       return { stdout, stderr: '', code: 0 };
@@ -507,6 +509,162 @@ describe('CLI Integration Tests', () => {
         expect(result.stdout).not.toContain('sample');
         expect(result.stdout).not.toContain('template');
       }
+    });
+  });
+
+  describe('Run Command', () => {
+    const PASSPHRASE = 'test-passphrase-12345';
+
+    it('should inject variables from a plain env file', () => {
+      fs.writeFileSync(path.join(testDir, '.env.local'), 'FOO=bar\nBAZ=qux');
+
+      const result = runCli(
+        `run -f .env.local -- node -e "process.stdout.write(process.env.FOO + '|' + process.env.BAZ)"`
+      );
+
+      expect(result.code).toBe(0);
+      expect(result.stdout).toBe('bar|qux');
+    });
+
+    it('should decrypt and inject an encrypted stage file', () => {
+      fs.writeFileSync(
+        path.join(testDir, '.env.production'),
+        'SECRET=s3cret\nNAME=envx'
+      );
+      const enc = runCli(
+        `encrypt -e production -p "${PASSPHRASE}" --overwrite`
+      );
+      expect(enc.code).toBe(0);
+
+      const result = runCli(
+        `run -e production -p "${PASSPHRASE}" -- node -e "process.stdout.write(process.env.SECRET + '|' + process.env.NAME)"`
+      );
+
+      expect(result.code).toBe(0);
+      expect(result.stdout).toBe('s3cret|envx');
+    });
+
+    it('should fail with non-zero exit on wrong passphrase', () => {
+      fs.writeFileSync(path.join(testDir, '.env.production'), 'FOO=bar');
+      runCli(`encrypt -e production -p "${PASSPHRASE}" --overwrite`);
+
+      const result = runCli(
+        `run -e production -p "wrong-passphrase" -- node -e "console.log('should not run')"`
+      );
+
+      expect(result.code).not.toBe(0);
+      expect(result.stdout).not.toContain('should not run');
+    });
+
+    it('should fail when stage does not exist', () => {
+      const result = runCli(
+        `run -e nonexistent-stage -- node -e "console.log('should not run')"`
+      );
+
+      expect(result.code).not.toBe(0);
+      expect(result.stdout + result.stderr).toMatch(/No env file found/i);
+    });
+
+    it('should propagate the child exit code', () => {
+      fs.writeFileSync(path.join(testDir, '.env.local'), 'FOO=bar');
+
+      const result = runCli(`run -f .env.local -- node -e "process.exit(42)"`);
+
+      expect(result.code).toBe(42);
+    });
+
+    it('should let --env inline override file values when --overload is set', () => {
+      fs.writeFileSync(path.join(testDir, '.env.local'), 'FOO=from-file');
+
+      const result = runCli(
+        `run -f .env.local --env FOO=from-inline --overload -- node -e "process.stdout.write(process.env.FOO)"`
+      );
+
+      expect(result.code).toBe(0);
+      expect(result.stdout).toBe('from-inline');
+    });
+
+    it('should preserve process.env over file values by default (no --overload)', () => {
+      fs.writeFileSync(
+        path.join(testDir, '.env.local'),
+        'FROM_FILE=file-value'
+      );
+
+      const result = runCli(
+        `run -f .env.local -- node -e "process.stdout.write(process.env.FROM_FILE + '|' + process.env.CONTROLLED)"`,
+        {
+          env: {
+            ...process.env,
+            FROM_FILE: 'from-shell',
+            CONTROLLED: 'yes',
+          },
+        }
+      );
+
+      expect(result.code).toBe(0);
+      expect(result.stdout).toBe('from-shell|yes');
+    });
+
+    it('should let --overload flip precedence so files beat process.env', () => {
+      fs.writeFileSync(
+        path.join(testDir, '.env.local'),
+        'FROM_FILE=file-value'
+      );
+
+      const result = runCli(
+        `run -f .env.local --overload -- node -e "process.stdout.write(process.env.FROM_FILE)"`,
+        {
+          env: { ...process.env, FROM_FILE: 'from-shell' },
+        }
+      );
+
+      expect(result.code).toBe(0);
+      expect(result.stdout).toBe('file-value');
+    });
+
+    it('should dry-run without invoking the command or printing values', () => {
+      fs.writeFileSync(path.join(testDir, '.env.local'), 'DB_PASSWORD=hunter2');
+
+      // Use process.exit(2) as the command: if child executes, exit code would
+      // be 2; dry-run mode must exit 0 without running it.
+      const result = runCli(
+        `run -f .env.local --dry-run -- node -e "process.exit(2)"`
+      );
+
+      // Dry-run must succeed (exit 0), not propagate the child's exit(2)
+      expect(result.code).toBe(0);
+      expect(result.stdout).toContain('DB_PASSWORD');
+      expect(result.stdout).not.toContain('hunter2');
+    });
+
+    it('should merge a stage file and an extra --env-file with later winning', () => {
+      fs.writeFileSync(path.join(testDir, '.env.production'), 'A=1\nB=2');
+      fs.writeFileSync(path.join(testDir, 'extra.env'), 'B=overridden\nC=3');
+
+      const result = runCli(
+        `run -e production -f extra.env --overload -- node -e "process.stdout.write([process.env.A,process.env.B,process.env.C].join('|'))"`
+      );
+
+      expect(result.code).toBe(0);
+      expect(result.stdout).toBe('1|overridden|3');
+    });
+
+    it('should fail when no sources are given', () => {
+      const result = runCli(`run -- node -e "console.log('hi')"`);
+
+      expect(result.code).not.toBe(0);
+      expect(result.stdout + result.stderr).toMatch(
+        /At least one of --environment, --env-file, or --env/i
+      );
+    });
+
+    it('should fail when no command is given', () => {
+      fs.writeFileSync(path.join(testDir, '.env.local'), 'FOO=bar');
+
+      const result = runCli(`run -f .env.local`);
+
+      expect(result.code).not.toBe(0);
+      expect(result.stdout + result.stderr).toMatch(/No command specified/i);
     });
   });
 });
