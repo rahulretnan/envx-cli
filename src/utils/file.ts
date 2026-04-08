@@ -225,6 +225,56 @@ export class FileUtils {
   }
 
   /**
+   * Returns true if `fs.stat` succeeds on the given path, regardless of
+   * entry type (file OR directory). Used by findProjectRoot to detect
+   * `.git` which may be a directory (normal repo) or a file (submodule).
+   *
+   * Distinct from fileExists(), which rejects directories.
+   */
+  private static async entryExists(entryPath: string): Promise<boolean> {
+    try {
+      await fs.stat(entryPath);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Walk upward from `cwd` returning the first ancestor (or `cwd` itself)
+   * that contains any of `.envrc`, `.envxrc`, or `.git`. Returns `null` if
+   * the walk reaches the filesystem root without finding a marker.
+   *
+   * Used to determine the "project root" for config discovery in monorepos.
+   * Not aware of symlinks — the input is resolved once via path.resolve and
+   * then walked as-given (no fs.realpath on each step).
+   */
+  static async findProjectRoot(cwd: string): Promise<string | null> {
+    const markers = ['.envrc', '.envxrc', '.git'];
+    let current = path.resolve(cwd);
+    let parent = path.dirname(current);
+
+    while (parent !== current) {
+      for (const marker of markers) {
+        if (await this.entryExists(path.join(current, marker))) {
+          return current;
+        }
+      }
+      current = parent;
+      parent = path.dirname(current);
+    }
+
+    // Check the filesystem root itself.
+    for (const marker of markers) {
+      if (await this.entryExists(path.join(current, marker))) {
+        return current;
+      }
+    }
+
+    return null;
+  }
+
+  /**
    * Create backup of a file
    */
   static async createBackup(filePath: string): Promise<string> {

@@ -578,4 +578,93 @@ describe('FileUtils Core Operations', () => {
       ).rejects.toThrow(/passphrase/i);
     });
   });
+
+  describe('findProjectRoot', () => {
+    let tempDir: string;
+
+    beforeEach(async () => {
+      tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'envx-findroot-'));
+      // Resolve symlinks (macOS /var → /private/var) so path assertions are
+      // comparing apples to apples regardless of platform.
+      tempDir = await fs.realpath(tempDir);
+    });
+
+    afterEach(async () => {
+      await fs.remove(tempDir);
+    });
+
+    it('returns cwd itself when cwd contains .envrc', async () => {
+      await fs.writeFile(path.join(tempDir, '.envrc'), 'export FOO=bar');
+      const result = await FileUtils.findProjectRoot(tempDir);
+      expect(result).toBe(tempDir);
+    });
+
+    it('returns cwd itself when cwd contains .envxrc', async () => {
+      await fs.writeJson(path.join(tempDir, '.envxrc'), {});
+      const result = await FileUtils.findProjectRoot(tempDir);
+      expect(result).toBe(tempDir);
+    });
+
+    it('returns cwd itself when cwd contains a .git directory', async () => {
+      await fs.ensureDir(path.join(tempDir, '.git'));
+      const result = await FileUtils.findProjectRoot(tempDir);
+      expect(result).toBe(tempDir);
+    });
+
+    it('returns cwd itself when cwd contains a .git file (submodule)', async () => {
+      await fs.writeFile(
+        path.join(tempDir, '.git'),
+        'gitdir: ../.git/modules/sub\n'
+      );
+      const result = await FileUtils.findProjectRoot(tempDir);
+      expect(result).toBe(tempDir);
+    });
+
+    it('returns nearest ancestor when cwd has no markers', async () => {
+      const sub = path.join(tempDir, 'packages', 'db');
+      await fs.ensureDir(sub);
+      await fs.writeFile(path.join(tempDir, '.envrc'), 'export FOO=bar');
+
+      const result = await FileUtils.findProjectRoot(sub);
+      expect(result).toBe(tempDir);
+    });
+
+    it('prefers the nearest ancestor when multiple contain markers', async () => {
+      const mid = path.join(tempDir, 'repo');
+      const sub = path.join(mid, 'packages', 'db');
+      await fs.ensureDir(sub);
+      // Outer marker: tempDir has .envrc
+      await fs.writeFile(path.join(tempDir, '.envrc'), 'export OUTER=1');
+      // Inner marker: mid has .git
+      await fs.ensureDir(path.join(mid, '.git'));
+
+      const result = await FileUtils.findProjectRoot(sub);
+      expect(result).toBe(mid);
+    });
+
+    it('returns null when no marker exists up to the filesystem root', async () => {
+      const sub = path.join(tempDir, 'deep', 'nested', 'path');
+      await fs.ensureDir(sub);
+      // No markers anywhere inside tempDir, and tempDir itself is in /tmp which
+      // has no markers either. (This assumes /tmp is not a git repo, which is
+      // standard on macOS and Linux CI.)
+      const result = await FileUtils.findProjectRoot(sub);
+      expect(result).toBeNull();
+    });
+
+    it('handles relative paths by resolving them first', async () => {
+      const sub = path.join(tempDir, 'packages', 'db');
+      await fs.ensureDir(sub);
+      await fs.writeFile(path.join(tempDir, '.envrc'), 'export FOO=bar');
+
+      const originalCwd = process.cwd();
+      try {
+        process.chdir(sub);
+        const result = await FileUtils.findProjectRoot('.');
+        expect(result).toBe(tempDir);
+      } finally {
+        process.chdir(originalCwd);
+      }
+    });
+  });
 });
