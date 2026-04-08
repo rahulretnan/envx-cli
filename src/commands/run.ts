@@ -127,6 +127,50 @@ export function mergeEnv(
   return finalEnv;
 }
 
+/**
+ * Build the --dry-run output string.
+ *
+ * CRITICAL: This function must NEVER include decrypted values in its
+ * output. It lists source metadata (origin, encryption status, key
+ * count) and the final key names, then shows the command that would
+ * run. Tests assert on the absence of secret values.
+ */
+export function formatDryRun(
+  loadedSources: LoadedSource[],
+  finalKeys: string[],
+  overload: boolean,
+  commandArgs: string[]
+): string {
+  const lines: string[] = [];
+
+  lines.push('Sources (in merge order, lowest → highest priority):');
+  if (loadedSources.length === 0) {
+    lines.push('  (none)');
+  } else {
+    loadedSources.forEach((source, i) => {
+      const kind = source.encrypted ? 'encrypted' : 'plain';
+      const n = Object.keys(source.values).length;
+      lines.push(`  ${i + 1}. ${source.origin} (${kind}, ${n} keys)`);
+    });
+  }
+
+  lines.push(
+    overload
+      ? 'files+inline win on conflict (--overload)'
+      : 'process.env wins on conflict (no --overload)'
+  );
+
+  const sortedKeys = [...finalKeys].sort();
+  lines.push(`Would inject ${sortedKeys.length} unique key(s):`);
+  for (const k of sortedKeys) {
+    lines.push(`  ${k}`);
+  }
+
+  lines.push(`Would run: ${commandArgs.join(' ')}`);
+
+  return lines.join('\n');
+}
+
 export const createRunCommand = (): Command => {
   const command = new Command('run');
   // Wiring happens in Task 13.

@@ -1,5 +1,6 @@
 import {
   collectRawSources,
+  formatDryRun,
   mergeEnv,
   parseInlineEnv,
   type LoadedSource,
@@ -170,5 +171,75 @@ describe('mergeEnv', () => {
     const parent: Record<string, string> = { FOO: 'original' };
     mergeEnv([makeSource({ FOO: 'changed', NEW: 'added' })], parent, true);
     expect(parent).toEqual({ FOO: 'original' });
+  });
+});
+
+describe('formatDryRun', () => {
+  const src = (
+    origin: string,
+    encrypted: boolean,
+    values: Record<string, string>
+  ): LoadedSource => ({
+    origin,
+    encrypted,
+    values,
+  });
+
+  it('should list each source with origin, encryption status, and key count', () => {
+    const output = formatDryRun(
+      [
+        src('.env.production.gpg', true, { A: '1', B: '2' }),
+        src('.env.overrides', false, { C: '3' }),
+      ],
+      ['A', 'B', 'C'],
+      false,
+      ['npm', 'start']
+    );
+    expect(output).toContain('.env.production.gpg (encrypted, 2 keys)');
+    expect(output).toContain('.env.overrides (plain, 1 keys)');
+  });
+
+  it('should state the precedence mode (no overload vs overload)', () => {
+    const noOverload = formatDryRun([], [], false, ['npm', 'start']);
+    const overload = formatDryRun([], [], true, ['npm', 'start']);
+    expect(noOverload).toContain(
+      'process.env wins on conflict (no --overload)'
+    );
+    expect(overload).toContain('files+inline win on conflict (--overload)');
+  });
+
+  it('should print the unique key list sorted', () => {
+    const output = formatDryRun(
+      [src('f', false, { ZZZ: '1', AAA: '2', MMM: '3' })],
+      ['AAA', 'MMM', 'ZZZ'],
+      false,
+      ['node', 'server.js']
+    );
+    const zIdx = output.indexOf('ZZZ');
+    const aIdx = output.indexOf('AAA');
+    const mIdx = output.indexOf('MMM');
+    expect(aIdx).toBeLessThan(mIdx);
+    expect(mIdx).toBeLessThan(zIdx);
+  });
+
+  it('should print the command that would run', () => {
+    const output = formatDryRun([], ['X'], false, ['npm', 'test', '--watch']);
+    expect(output).toContain('npm test --watch');
+  });
+
+  it('should NEVER print values (secret leak guard)', () => {
+    const output = formatDryRun(
+      [src('.env.production.gpg', true, { DB_PASSWORD: 'hunter2' })],
+      ['DB_PASSWORD'],
+      false,
+      ['npm', 'start']
+    );
+    expect(output).not.toContain('hunter2');
+    expect(output).toContain('DB_PASSWORD');
+  });
+
+  it('should handle empty source list and empty key list', () => {
+    const output = formatDryRun([], [], false, ['echo', 'hi']);
+    expect(output).toContain('Would inject 0 unique key(s)');
   });
 });
