@@ -666,5 +666,51 @@ describe('CLI Integration Tests', () => {
       expect(result.code).not.toBe(0);
       expect(result.stdout + result.stderr).toMatch(/No command specified/i);
     });
+
+    it('resolves .envrc from a monorepo root when run from a subdirectory', () => {
+      // Build fixture:
+      //   testDir/.envrc            (passphrase)
+      //   testDir/.envxrc           (any json, acts as the project marker)
+      //   testDir/packages/db/.env.monorepo.gpg  (encrypted with passphrase)
+      //
+      // Then: run `envx run -e monorepo --cwd testDir/packages/db -- node …`
+      // and verify FOO is injected without an interactive prompt.
+      const PASSPHRASE = 'monorepo-walk-pass';
+      const pkgDir = path.join(testDir, 'packages', 'db');
+      fs.ensureDirSync(pkgDir);
+
+      // .envrc at root with the passphrase under the expected variable name.
+      fs.writeFileSync(
+        path.join(testDir, '.envrc'),
+        `export MONOREPO_SECRET="${PASSPHRASE}"\n`
+      );
+      // .envxrc at root (contents irrelevant for this test).
+      fs.writeFileSync(path.join(testDir, '.envxrc'), '{}\n');
+
+      // Create the plain env file inside the package, then encrypt it using
+      // the built CLI so the fixture matches reality bit-for-bit.
+      fs.writeFileSync(
+        path.join(pkgDir, '.env.monorepo'),
+        'FOO=bar\nNAME=envx\n'
+      );
+      const enc = runCli(
+        `encrypt -e monorepo -p "${PASSPHRASE}" --overwrite --cwd "${pkgDir}"`
+      );
+      expect(enc.code).toBe(0);
+      // Remove the plain file so only the encrypted one is present — this
+      // forces resolveStageFile to pick the .gpg variant, which requires
+      // the passphrase.
+      fs.removeSync(path.join(pkgDir, '.env.monorepo'));
+
+      // Now run the CLI from the package subdirectory without -p.
+      // Pre-fix: this prompts for a passphrase (hangs or fails).
+      // Post-fix: the passphrase is resolved from ../../.envrc silently.
+      const result = runCli(
+        `run -e monorepo --cwd "${pkgDir}" -- node -e "process.stdout.write(process.env.FOO + '|' + process.env.NAME)"`
+      );
+
+      expect(result.code).toBe(0);
+      expect(result.stdout).toBe('bar|envx');
+    });
   });
 });
