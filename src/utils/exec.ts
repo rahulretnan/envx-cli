@@ -1,5 +1,5 @@
 import chalk from 'chalk';
-import { execSync, execFileSync, spawn, ChildProcess } from 'child_process';
+import { execSync, spawn, spawnSync, ChildProcess } from 'child_process';
 import { writeFileSync } from 'fs';
 import shell from 'shelljs';
 import { CommandResult } from '../types';
@@ -42,60 +42,130 @@ export class ExecUtils {
   }
 
   /**
-   * Execute GPG encrypt command
+   * Build the common arg array for `gpg` invocations that accept a
+   * passphrase via stdin. The passphrase is NEVER placed in argv:
+   *
+   *   --passphrase-fd 0      Read the passphrase from stdin (fd 0).
+   *   --pinentry-mode loopback
+   *                          Bypass gpg-agent's pinentry — trust the
+   *                          passphrase we're piping on stdin.
+   *   --quiet --yes --batch  Non-interactive mode, no prompts.
+   *
+   * Callers pass the passphrase via spawnSync's `input` option.
    */
-  static encryptFile(filePath: string, passphrase: string): CommandResult {
-    const command = `gpg --passphrase "${passphrase}" --quiet --yes --batch -c "${filePath}"`;
-    return this.exec(command, { silent: true });
+  private static gpgBaseArgs(): string[] {
+    return [
+      '--passphrase-fd',
+      '0',
+      '--pinentry-mode',
+      'loopback',
+      '--quiet',
+      '--yes',
+      '--batch',
+    ];
   }
 
   /**
-   * Execute GPG decrypt command
+   * Run gpg with an argv list and feed the passphrase via stdin.
+   * Returns a uniform result shape so the three GPG wrappers
+   * (encryptFile, decryptFile, decryptFileToString) can share it.
+   */
+  private static runGpg(
+    args: string[],
+    passphrase: string
+  ): { status: number; stdout: string; stderr: string; spawnError?: Error } {
+    const result = spawnSync('gpg', args, {
+      input: passphrase,
+      encoding: 'utf-8',
+      stdio: ['pipe', 'pipe', 'pipe'],
+    });
+    if (result.error) {
+      return {
+        status: -1,
+        stdout: '',
+        stderr: result.error.message,
+        spawnError: result.error,
+      };
+    }
+    return {
+      status: result.status ?? -1,
+      stdout: (result.stdout as string) || '',
+      stderr: (result.stderr as string) || '',
+    };
+  }
+
+  /**
+   * Execute GPG encrypt command. Passphrase flows via stdin, never argv.
+   */
+  static encryptFile(filePath: string, passphrase: string): CommandResult {
+    const args = [...this.gpgBaseArgs(), '-c', filePath];
+    const result = this.runGpg(args, passphrase);
+    if (result.status !== 0) {
+      const reason =
+        result.stderr.trim() || `gpg exited with code ${result.status}`;
+      return {
+        success: false,
+        message: `Command failed: ${reason}`,
+        errors: [reason],
+      };
+    }
+    return {
+      success: true,
+      message: 'Command executed successfully',
+      data: result.stdout,
+    };
+  }
+
+  /**
+   * Execute GPG decrypt command, writing the plaintext to `outputPath`.
+   * Passphrase flows via stdin, never argv.
    */
   static decryptFile(
     encryptedPath: string,
     outputPath: string,
     passphrase: string
   ): CommandResult {
-    const command = `gpg --passphrase "${passphrase}" --quiet --yes --batch -o "${outputPath}" -d "${encryptedPath}"`;
-    return this.exec(command, { silent: true });
+    const args = [...this.gpgBaseArgs(), '-o', outputPath, '-d', encryptedPath];
+    const result = this.runGpg(args, passphrase);
+    if (result.status !== 0) {
+      const reason =
+        result.stderr.trim() || `gpg exited with code ${result.status}`;
+      return {
+        success: false,
+        message: `Command failed: ${reason}`,
+        errors: [reason],
+      };
+    }
+    return {
+      success: true,
+      message: 'Command executed successfully',
+      data: result.stdout,
+    };
   }
 
   /**
    * Decrypt a GPG file to an in-memory string. Never writes to disk.
    *
-   * Uses execFileSync with an argument array — no shell interpolation,
-   * so passphrase / path values cannot escape into a shell command.
-   * The passphrase still flows through argv (visible via `ps` on some
-   * systems); hardening to stdin is a separate follow-up.
+   * Uses spawnSync with an argument array AND pipes the passphrase via
+   * stdin (`--passphrase-fd 0`). The passphrase is never visible via
+   * `ps`, `/proc/<pid>/cmdline`, or auditd's execve logging — it flows
+   * only through an anonymous pipe from this process to gpg.
+   *
+   * `--pinentry-mode loopback` tells gpg-agent to step aside and accept
+   * the passphrase we're sending rather than popping up a GUI prompt.
    */
   static decryptFileToString(
     encryptedPath: string,
     passphrase: string
   ): { success: boolean; content?: string; error?: string } {
-    const args = [
-      '--passphrase',
-      passphrase,
-      '--quiet',
-      '--yes',
-      '--batch',
-      '-d',
-      encryptedPath,
-    ];
-    try {
-      const stdout = execFileSync('gpg', args, {
-        encoding: 'utf-8',
-        stdio: ['ignore', 'pipe', 'pipe'],
-      });
-      return { success: true, content: stdout };
-    } catch (error) {
-      const err = error as Error & { stderr?: Buffer | string };
-      const stderr =
-        typeof err.stderr === 'string'
-          ? err.stderr
-          : (err.stderr?.toString() ?? err.message);
-      return { success: false, error: stderr };
+    const args = [...this.gpgBaseArgs(), '-d', encryptedPath];
+    const result = this.runGpg(args, passphrase);
+    if (result.status !== 0) {
+      const reason =
+        result.stderr.trim() || `gpg exited with code ${result.status}`;
+      return { success: false, error: reason };
     }
+    return { success: true, content: result.stdout };
   }
 
   /**
