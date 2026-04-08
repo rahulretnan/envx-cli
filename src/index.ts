@@ -12,6 +12,7 @@ import {
   createInteractiveCommand,
   showQuickStart,
 } from './commands/interactive';
+import { createRunCommand } from './commands/run';
 import { ExitCode } from './types';
 import { CliUtils, ExecUtils } from './utils/exec';
 import { FileUtils } from './utils/file';
@@ -27,6 +28,7 @@ async function createProgram(): Promise<Command> {
     .name('envx')
     .description('Environment file encryption and management tool')
     .version(packageJson.version)
+    .enablePositionalOptions()
     .option('-v, --verbose', 'Enable verbose output')
     .option('-q, --quiet', 'Suppress non-error output')
     .hook('preAction', async thisCommand => {
@@ -53,6 +55,7 @@ async function createProgram(): Promise<Command> {
   program.addCommand(createCopyCommand());
   program.addCommand(createInteractiveCommand());
   program.addCommand(createConfigCommand());
+  program.addCommand(createRunCommand());
 
   // List command to show environment status
   program
