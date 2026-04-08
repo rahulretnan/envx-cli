@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+# [1.4.0](https://github.com/rahulretnan/envx-cli/compare/v1.3.1...v1.4.0) (2026-04-08)
+
+
+### Features
+
+* **exec:** add decryptFileToString via execFileSync ([92b31e7](https://github.com/rahulretnan/envx-cli/commit/92b31e737ac44b58451856e4653dd2d83b1b235c))
+* **exec:** add spawnChildWithEnv helper with signal forwarding ([1c4cf7f](https://github.com/rahulretnan/envx-cli/commit/1c4cf7f85cfc08207cb6b477519673e16c9279ff))
+* **exec:** harden GPG passphrase passing via stdin ([db09e19](https://github.com/rahulretnan/envx-cli/commit/db09e19f5e037125b50dcd4fb528b69496a4b8f4))
+* **file:** add loadEnvSource to unify plain/encrypted loading ([e88a98c](https://github.com/rahulretnan/envx-cli/commit/e88a98c77f320d8d53099dd0b9ce801b764665d0))
+* **file:** add parseEnvContent helper using dotenv + dotenv-expand ([abbf4aa](https://github.com/rahulretnan/envx-cli/commit/abbf4aaae96479c4e1a91e60a721b57272e1ec2d))
+* **file:** add resolveStageFile for cwd-only stage discovery ([3f2a756](https://github.com/rahulretnan/envx-cli/commit/3f2a756f0898a899a08e72a7b237011ae9ea4a86))
+* **index:** register envx run command ([57c4fbd](https://github.com/rahulretnan/envx-cli/commit/57c4fbd7c1b8eec64d98d8179e76d9be2a054cdd))
+* **run:** add collectRawSources pure function ([73be304](https://github.com/rahulretnan/envx-cli/commit/73be30432f51b59ffdf537234f226ae28d0b5e24))
+* **run:** add formatDryRun pure function with secret-leak guard ([243ae81](https://github.com/rahulretnan/envx-cli/commit/243ae81ae6168126b404c452abedfbae615c863d))
+* **run:** add mergeEnv pure function with dotenvx-style precedence ([de56029](https://github.com/rahulretnan/envx-cli/commit/de560294b9a6a0ba4234f07bfef103cef8a74af5))
+* **run:** add parseInlineEnv pure function ([ff61cf1](https://github.com/rahulretnan/envx-cli/commit/ff61cf17e88d674d274b64fb61ffb270ad729fa1))
+* **run:** scaffold run command file with type aliases ([1de884d](https://github.com/rahulretnan/envx-cli/commit/1de884d5ba9eabd9e380aa4893d3e39ac5369eba))
+* **run:** wire createRunCommand and executeRun orchestrator ([79784ea](https://github.com/rahulretnan/envx-cli/commit/79784ea90db84ff4b95f29e4e5d06ce96b3cad7c))
+* **schemas:** add runSchema and validateRunOptions ([5351620](https://github.com/rahulretnan/envx-cli/commit/535162042c14d1f0ed06f06596ecee9b61a1a398))
+
 ## [1.3.1](https://github.com/rahulretnan/envx-cli/compare/v1.3.0...v1.3.1) (2026-02-08)
 
 
