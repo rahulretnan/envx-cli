@@ -354,9 +354,13 @@ export class FileUtils {
     const parsed = dotenv.parse(content);
     // Pass a throwaway copy so dotenv-expand's in-place writes to processEnv
     // don't leak into the real environment. Reading still sees current vars.
+    // Exclude keys already defined in parsed so dotenv-expand cannot
+    // clobber file values with process.env values (dotenv-expand gives
+    // processEnv precedence over parsed when override is not set).
     const processEnvCopy: Record<string, string> = Object.fromEntries(
       Object.entries(process.env).filter(
-        (entry): entry is [string, string] => entry[1] !== undefined
+        (entry): entry is [string, string] =>
+          entry[1] !== undefined && !(entry[0] in parsed)
       )
     );
     expand({ parsed, processEnv: processEnvCopy });
