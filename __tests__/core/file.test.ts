@@ -896,4 +896,53 @@ describe('FileUtils Core Operations', () => {
       expect(result).toEqual(FileUtils.DEFAULT_EXCLUDE_DIRS);
     });
   });
+
+  describe('mergeEnvxrc with upward discovery', () => {
+    let tempDir: string;
+
+    beforeEach(async () => {
+      tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'envx-mergeup-'));
+      tempDir = await fs.realpath(tempDir);
+    });
+
+    afterEach(async () => {
+      await fs.remove(tempDir);
+    });
+
+    it('writes to the nearest existing .envxrc when called from a subdirectory', async () => {
+      const sub = path.join(tempDir, 'packages', 'db');
+      await fs.ensureDir(sub);
+      await fs.writeJson(path.join(tempDir, '.envxrc'), {
+        ignore: ['demo'],
+      });
+
+      const result = await FileUtils.mergeEnvxrc(sub, {
+        ignore: ['demo', 'staging'],
+      });
+
+      expect(result.success).toBe(true);
+      expect(result.filePath).toBe(path.join(tempDir, '.envxrc'));
+
+      // The subdirectory must NOT have gained its own .envxrc.
+      expect(await fs.pathExists(path.join(sub, '.envxrc'))).toBe(false);
+
+      // The root file must contain the merged config.
+      const rootConfig = await fs.readJson(path.join(tempDir, '.envxrc'));
+      expect(rootConfig.ignore).toEqual(['demo', 'staging']);
+    });
+
+    it('creates .envxrc in cwd when no ancestor has one', async () => {
+      const sub = path.join(tempDir, 'packages', 'db');
+      await fs.ensureDir(sub);
+      // No .envxrc anywhere up the tree.
+
+      const result = await FileUtils.mergeEnvxrc(sub, {
+        ignore: ['demo'],
+      });
+
+      expect(result.success).toBe(true);
+      expect(result.filePath).toBe(path.join(sub, '.envxrc'));
+      expect(await fs.pathExists(path.join(sub, '.envxrc'))).toBe(true);
+    });
+  });
 });

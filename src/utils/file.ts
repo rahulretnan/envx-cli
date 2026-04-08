@@ -81,15 +81,22 @@ export class FileUtils {
   }
 
   /**
-   * Merge partial config into existing .envxrc
+   * Merge partial config into the nearest existing `.envxrc`.
+   *
+   * Walks upward from `cwd` via findEnvxrcUpward. If a file is found,
+   * writes the merged result to that ancestor (so `envx config …` from a
+   * monorepo subdirectory edits the root config, not a package-local
+   * shadow). Falls back to creating `.envxrc` in `cwd` only when no
+   * ancestor has one (greenfield behavior).
    */
   static async mergeEnvxrc(
     cwd: string,
     partial: Partial<EnvxrcConfig>
   ): Promise<FileOperationResult> {
-    const existing = await this.readEnvxrc(cwd);
+    const targetDir = (await this.findEnvxrcUpward(cwd)) ?? cwd;
+    const existing = await this.readEnvxrc(targetDir);
     const merged: EnvxrcConfig = { ...existing, ...partial };
-    return this.writeEnvxrc(cwd, merged);
+    return this.writeEnvxrc(targetDir, merged);
   }
 
   /**
