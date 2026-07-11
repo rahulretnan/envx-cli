@@ -79,10 +79,16 @@ export interface CommandResult {
   errors?: string[];
 }
 
+export interface RegisteredFile {
+  path: string; // project-root-relative, POSIX separators
+  stage?: string;
+}
+
 export interface EnvxrcConfig {
   ignore?: string[];
   environments?: string[];
   excludeDirs?: string[];
+  files?: RegisteredFile[];
 }
 
 export enum ExitCode {
