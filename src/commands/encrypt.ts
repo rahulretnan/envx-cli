@@ -5,6 +5,7 @@ import { ExitCode } from '../types';
 import { CliUtils, ExecUtils } from '../utils/exec';
 import { FileUtils } from '../utils/file';
 import { InteractiveUtils } from '../utils/interactive';
+import { processRegisteredFiles } from './files';
 
 export const createEncryptCommand = (): Command => {
   const command = new Command('encrypt');
@@ -39,7 +40,7 @@ export const createEncryptCommand = (): Command => {
   return command;
 };
 
-async function executeEncrypt(rawOptions: any): Promise<void> {
+export async function executeEncrypt(rawOptions: any): Promise<void> {
   CliUtils.header('Environment File Encryption');
 
   // Validate --all flag compatibility
@@ -105,7 +106,27 @@ async function executeEncrypt(rawOptions: any): Promise<void> {
     );
   }
 
-  await processSingleEnvironment(rawOptions, environment, cwd);
+  const envResult = await processSingleEnvironment(
+    rawOptions,
+    environment,
+    cwd
+  );
+
+  // Ride-along: encrypt files registered for this stage
+  const { root, entries } = await FileUtils.getRegisteredFiles(cwd);
+  const stageFiles = entries.filter(e => e.stage === environment);
+  if (stageFiles.length > 0) {
+    console.log();
+    CliUtils.subheader('Registered Files');
+    const fileResult = await processRegisteredFiles(stageFiles, root, {
+      mode: 'encrypt',
+      rawOptions,
+      passphraseOverride: envResult.passphrase,
+    });
+    if (fileResult.errorCount > 0) {
+      process.exit(ExitCode.GENERAL_ERROR);
+    }
+  }
 }
 
 async function processAllEnvironments(
@@ -154,6 +175,25 @@ async function processAllEnvironments(
     }
   }
 
+  // Ride-along: process ALL registered files (stage-bound + global)
+  const { root, entries } = await FileUtils.getRegisteredFiles(cwd);
+  if (entries.length > 0) {
+    console.log();
+    CliUtils.subheader('Registered Files');
+    const fileResult = await processRegisteredFiles(entries, root, {
+      mode: 'encrypt',
+      rawOptions,
+      isPartOfAll: true,
+    });
+    results.push({
+      environment: 'registered files',
+      success: fileResult.successCount,
+      errors: fileResult.errorCount,
+    });
+    totalSuccess += fileResult.successCount;
+    totalErrors += fileResult.errorCount;
+  }
+
   // Final summary for all environments
   console.log();
   CliUtils.header('Overall Summary');
@@ -200,7 +240,7 @@ async function processSingleEnvironment(
   environment: string,
   cwd: string,
   isPartOfAll: boolean = false
-): Promise<{ successCount: number; errorCount: number }> {
+): Promise<{ successCount: number; errorCount: number; passphrase: string }> {
   let passphrase: string = rawOptions.passphrase || '';
 
   // Get passphrase
@@ -257,7 +297,7 @@ async function processSingleEnvironment(
     CliUtils.warning(
       `No unencrypted .env.${environment} files found to encrypt.`
     );
-    return { successCount: 0, errorCount: 0 };
+    return { successCount: 0, errorCount: 0, passphrase };
   }
 
   if (!isPartOfAll) {
@@ -278,7 +318,7 @@ async function processSingleEnvironment(
       const rel = FileUtils.getRelativePath(file.path, cwd);
       console.log(`  would encrypt: ${chalk.cyan(rel)}`);
     }
-    return { successCount: unencryptedFiles.length, errorCount: 0 };
+    return { successCount: unencryptedFiles.length, errorCount: 0, passphrase };
   }
 
   // Interactive file selection if requested (skip for --all)
@@ -295,7 +335,7 @@ async function processSingleEnvironment(
 
   if (filesToProcess.length === 0) {
     CliUtils.info('No files selected for encryption.');
-    return { successCount: 0, errorCount: 0 };
+    return { successCount: 0, errorCount: 0, passphrase };
   }
 
   // Confirm operation (skip for --all)
@@ -305,7 +345,7 @@ async function processSingleEnvironment(
     );
     if (!confirm) {
       CliUtils.info('Operation cancelled.');
-      return { successCount: 0, errorCount: 0 };
+      return { successCount: 0, errorCount: 0, passphrase };
     }
   }
 
@@ -426,7 +466,7 @@ async function processSingleEnvironment(
     }
   }
 
-  return { successCount, errorCount };
+  return { successCount, errorCount, passphrase };
 }
 
 /**
