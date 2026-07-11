@@ -257,6 +257,27 @@ export class ExecUtils {
   }
 
   /**
+   * Check whether a path is tracked by git, using an argv array (no shell)
+   * so filenames with shell metacharacters cannot be interpreted. Returns
+   * false when git is absent or the path is untracked.
+   */
+  static isPathTrackedByGit(relPath: string, cwd: string): boolean {
+    try {
+      const result = spawnSync(
+        'git',
+        ['ls-files', '--error-unmatch', relPath],
+        {
+          cwd,
+          stdio: 'pipe',
+        }
+      );
+      return result.status === 0;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
    * Get current working directory
    */
   static getCurrentDir(): string {

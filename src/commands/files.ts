@@ -125,11 +125,7 @@ export async function executeFilesAdd(
 
   // Warn if the plaintext is already tracked by git — the secret may
   // already be in history.
-  const tracked = ExecUtils.exec(`git ls-files --error-unmatch "${rel}"`, {
-    silent: true,
-    cwd: root,
-  });
-  if (tracked.success) {
+  if (ExecUtils.isPathTrackedByGit(rel, root)) {
     CliUtils.warning(
       `${rel} is tracked by git — the plaintext may already be committed. ` +
         'Consider `git rm --cached` after encrypting.'
