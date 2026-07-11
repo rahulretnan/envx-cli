@@ -53,9 +53,13 @@ given.
    resolved against — same project-root convention as `.envxrc`/`.envrc` discovery
    elsewhere in the CLI.
 2. **`add <path>`**: resolves `path` relative to `cwd`, re-bases it onto `root`
-   (`rebaseToRoot`, POSIX separators), and validates it with `registeredFileSchema`
-   (rejects absolute paths, `.gpg` paths, and `..` segments). Warns (no-op) on a
-   duplicate registration. Prompts for confirmation if the file doesn't exist yet.
+   (`rebaseToRoot`, POSIX separators) — an absolute path pointing inside `root` is
+   accepted and normalized to a root-relative path; only a path resolving outside
+   `root` makes `rebaseToRoot` throw — and validates the result with
+   `registeredFileSchema` (rejects `.gpg` paths and `..` segments; its
+   absolute-path check mainly guards a hand-edited `.envxrc` read back later).
+   Warns (no-op) on a duplicate registration. Prompts for confirmation if the
+   file doesn't exist yet.
    Warns if the plaintext path is already tracked by git (`isPathTrackedByGit`) —
    the secret may already be in history. Writes the updated array via
    `FileUtils.mergeEnvxrc`. Unless `--no-gitignore`, appends the path plus
@@ -105,20 +109,21 @@ global) with `isPartOfAll: true`, so global entries are resolved against
 
 ## Edge cases (from code)
 
-| Scenario                                            | Behavior                                                                      |
-| --------------------------------------------------- | ----------------------------------------------------------------------------- |
-| `add` a path already registered                     | Warn, no write.                                                               |
-| `add` a `.gpg` path                                 | Zod rejects: "Register the plaintext path, not the .gpg file".                |
-| `add` an absolute path or one escaping the root     | Zod rejects / `rebaseToRoot` throws.                                          |
-| `add` a file that doesn't exist yet                 | Confirmation prompt; declining cancels the operation.                         |
-| `add` a path already tracked by git                 | Warning suggesting `git rm --cached` after encrypting; registration proceeds. |
-| `remove` a path not registered                      | Warn, no write.                                                               |
-| `encrypt`/`decrypt <path>` for an unregistered path | Throws `'<path>' is not registered.` → `INVALID_ARGS (2)`.                    |
-| No files registered                                 | Warn and return; `list` suggests `envx files add`.                            |
-| `.envxrc` write fails (`add`/`remove`)              | `FILE_ERROR (3)`.                                                             |
-| GPG unavailable (`encrypt`/`decrypt`, not dry-run)  | `GPG_ERROR (4)` with install help.                                            |
-| GPG test fails for a secret variable's group        | That group's entries all count as errors; other groups still processed.       |
-| Any file fails to encrypt/decrypt                   | `GENERAL_ERROR (1)` after reporting the per-file failure count.               |
+| Scenario                                                   | Behavior                                                                      |
+| ---------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| `add` a path already registered                            | Warn, no write.                                                               |
+| `add` a `.gpg` path                                        | Zod rejects: "Register the plaintext path, not the .gpg file".                |
+| `add` an absolute path pointing inside the root            | Accepted — `rebaseToRoot` normalizes it to a root-relative path.              |
+| `add` a path resolving outside the root (absolute or `..`) | `rebaseToRoot` throws.                                                        |
+| `add` a file that doesn't exist yet                        | Confirmation prompt; declining cancels the operation.                         |
+| `add` a path already tracked by git                        | Warning suggesting `git rm --cached` after encrypting; registration proceeds. |
+| `remove` a path not registered                             | Warn, no write.                                                               |
+| `encrypt`/`decrypt <path>` for an unregistered path        | Throws `'<path>' is not registered.` → `INVALID_ARGS (2)`.                    |
+| No files registered                                        | Warn and return; `list` suggests `envx files add`.                            |
+| `.envxrc` write fails (`add`/`remove`)                     | `FILE_ERROR (3)`.                                                             |
+| GPG unavailable (`encrypt`/`decrypt`, not dry-run)         | `GPG_ERROR (4)` with install help.                                            |
+| GPG test fails for a secret variable's group               | That group's entries all count as errors; other groups still processed.       |
+| Any file fails to encrypt/decrypt                          | `GENERAL_ERROR (1)` after reporting the per-file failure count.               |
 
 ## Exit codes
 

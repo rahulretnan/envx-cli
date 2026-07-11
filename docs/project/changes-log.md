@@ -80,8 +80,8 @@ files. The files themselves carry their own local changelog tables.
   0003-upward-config-discovery, 0004-run-in-memory-decrypt
 
 **Deliberately skipped** (N/A for a CLI): `shared/` (rbac-matrix, nfr,
-webhooks-_, async-architecture, observability, compliance-pii), `index/_`,
-`api-_`, `schema-_`, `modules/` beyond the single Commands module.
+`webhooks-*`, async-architecture, observability, compliance-pii), `index/*`,
+`api-*`, `schema-*`, `modules/` beyond the single Commands module.
 
 **Not modified**: root `README.md` / `CLAUDE.md` / `CHANGELOG.md` / `TESTING.md`
 — already accurate and current; left as the user-facing source of truth.

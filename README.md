@@ -566,7 +566,7 @@ envx files encrypt --dry-run          # preview, no changes
 
 #### Behavior
 
-- **Registry**: entries are `{ path, stage? }` in `.envxrc`'s `files` array, with `path` root-relative (relative to the nearest `.envrc`/`.envxrc`/`.git` ancestor). Absolute paths, `.gpg` paths, and paths that escape the project root are rejected.
+- **Registry**: entries are `{ path, stage? }` in `.envxrc`'s `files` array, with `path` root-relative (relative to the nearest `.envrc`/`.envxrc`/`.git` ancestor). Paths that resolve outside the project root are rejected (via `rebaseToRoot`); an absolute path pointing inside the root is accepted and normalized to a root-relative path. `.gpg` paths and hand-edited `.envxrc` entries with absolute/`..` paths are rejected by the schema.
 - **Stage-bound vs global**: an entry with `stage` set is encrypted/decrypted with that stage's `<STAGE>_SECRET` — the same variable `envx encrypt`/`envx decrypt` already use. An entry without a `stage` uses a dedicated `FILES_SECRET` variable in `.envrc`.
 - **Ride-along**: `envx encrypt -e <stage>` and `envx decrypt -e <stage>` automatically process any registered files bound to that stage, reusing the passphrase already resolved for the stage — no separate `envx files` call needed. `envx encrypt --all` / `envx decrypt --all` process **every** registered file, stage-bound and global alike.
 - **Idempotency and safety**: `files encrypt` skips a file whose existing `.gpg` already decrypts to identical content; `files decrypt` backs up an existing plaintext file before overwriting it and restores the backup if decryption fails — the same behavior as `envx encrypt`/`envx decrypt`.
