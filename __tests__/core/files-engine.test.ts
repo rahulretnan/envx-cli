@@ -223,6 +223,7 @@ describe('executeFilesEncrypt (CLI wrapper)', () => {
 
   beforeEach(async () => {
     tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'envx-files-cli-'));
+    jest.spyOn(ExecUtils, 'isGpgAvailable').mockReturnValue(true);
   });
 
   afterEach(async () => {
