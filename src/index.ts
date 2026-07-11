@@ -8,6 +8,7 @@ import { createCreateCommand } from './commands/create';
 import { createDecryptCommand } from './commands/decrypt';
 import { createConfigCommand } from './commands/config';
 import { createEncryptCommand, encryptEnvironment } from './commands/encrypt';
+import { createFilesCommand } from './commands/files';
 import {
   createInteractiveCommand,
   showQuickStart,
@@ -55,6 +56,7 @@ async function createProgram(): Promise<Command> {
   program.addCommand(createInteractiveCommand());
   program.addCommand(createConfigCommand());
   program.addCommand(createRunCommand());
+  program.addCommand(createFilesCommand());
 
   // List command to show environment status
   program
