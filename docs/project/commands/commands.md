@@ -2,7 +2,7 @@
 Module: Commands
 Owners: Rahul Retnan
 Status: Implemented
-Version: 1.0
+Version: 1.1
 Last Updated: 2026-07-12
 ---
 
@@ -28,6 +28,7 @@ in `src/index.ts`) and exports `createXxxCommand()` + `executeXxx()`.
 | `interactive`                         | `commands/interactive.ts` | Set up `.envrc` secrets via prompts                        | [feature-interactive](./features/feature-interactive.md)           |
 | `run`                                 | `commands/run.ts`         | Decrypt in memory, run a sub-process with vars injected    | [feature-run](./features/feature-run.md)                           |
 | `config`                              | `commands/config.ts`      | Manage `.envxrc` (show / ignore / exclude / reset)         | [feature-config](./features/feature-config.md)                     |
+| `files`                               | `commands/files.ts`       | Register + GPG-encrypt/decrypt arbitrary secret files      | [feature-files](./features/feature-files.md)                       |
 | `init` `list`/`ls` `status` `version` | `index.ts` (inline)       | First-run setup, listing, status, version info             | [feature-project-commands](./features/feature-project-commands.md) |
 
 ## Command dispatch
@@ -75,6 +76,12 @@ flowchart LR
 `validateEncryptOptions` / `validateDecryptOptions` swap to a permissive schema
 when `--all` is set; `validateCopyOptions` throws if `--all` is set without `-e`.
 
+**Registered files ride along `encrypt`/`decrypt`:** `-e <stage>` also processes any
+`files` registry entries bound to that stage (reusing the resolved passphrase);
+`--all` also processes **every** registered entry, stage-bound and global alike
+(global entries resolve against `FILES_SECRET`). See
+[feature-files](./features/feature-files.md).
+
 ## Cross-cutting
 
 - **Config resolution order:** passphrase → flag > `.envrc` > prompt; cwd → flag >
@@ -92,6 +99,7 @@ See [test-plan.md](../test-plan.md).
 
 ## Changelog
 
-| Version | Date       | Changes                          |
-| ------- | ---------- | -------------------------------- |
-| 1.0     | 2026-07-12 | Initial reverse-engineered draft |
+| Version | Date       | Changes                                                            |
+| ------- | ---------- | ------------------------------------------------------------------ |
+| 1.0     | 2026-07-12 | Initial reverse-engineered draft                                   |
+| 1.1     | 2026-07-12 | Add `files` command row + `--all` ride-along note for `envx files` |

@@ -26,6 +26,32 @@ files. The files themselves carry their own local changelog tables.
 
 ---
 
+## 2026-07-12 — `envx files`: registered secret-file encryption
+
+**Change type**: additive
+**Triggered by**: `envx files` feature implementation — spec
+`docs/superpowers/specs/2026-07-12-envx-files-encryption-design.md`, plan
+`docs/superpowers/plans/2026-07-12-envx-files-encryption.md`
+
+**Files rewritten** (5):
+
+- `README.md` (root, unversioned) — adds `envx files` command section, `.envxrc`
+  `files` field row, `FILES_SECRET` note in Secret Variable Naming
+- `CLAUDE.md` (root, unversioned) — adds `files` command bullet, `.envxrc` `files`
+  field, exported-function notes for `executeEncrypt`/`executeDecrypt`
+- `docs/project/commands/features/feature-files.md` (new) v1.0
+- `docs/project/commands/commands.md` v1.0 → v1.1 — `files` row in command
+  inventory, ride-along note in the `--all` matrix section
+- `docs/project/changes-log.md` (this entry)
+
+**ADR triggered**: none — fits existing `.envrc`/`.envxrc` split
+([adr/0002](./adr/0002-envrc-envxrc-split.md)).
+**Downstream actions required**:
+
+- [ ] None outstanding.
+
+---
+
 ## 2026-07-12 — Initial reverse-engineering from existing code
 
 **Change type**: initial-reverse-engineer
@@ -54,8 +80,8 @@ files. The files themselves carry their own local changelog tables.
   0003-upward-config-discovery, 0004-run-in-memory-decrypt
 
 **Deliberately skipped** (N/A for a CLI): `shared/` (rbac-matrix, nfr,
-webhooks-*, async-architecture, observability, compliance-pii), `index/*`,
-`api-*`, `schema-*`, `modules/` beyond the single Commands module.
+webhooks-_, async-architecture, observability, compliance-pii), `index/_`,
+`api-_`, `schema-_`, `modules/` beyond the single Commands module.
 
 **Not modified**: root `README.md` / `CLAUDE.md` / `CHANGELOG.md` / `TESTING.md`
 — already accurate and current; left as the user-facing source of truth.
