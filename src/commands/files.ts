@@ -390,9 +390,6 @@ async function encryptRegisteredFile(
       );
       if (decryptResult.success) {
         const identical = await FileUtils.filesAreIdentical(abs, tempPath);
-        if (await FileUtils.fileExists(tempPath)) {
-          ExecUtils.removeFile(tempPath);
-        }
         if (identical) {
           CliUtils.success(
             `${entry.path}: already encrypted with same content — skipping`
@@ -404,6 +401,8 @@ async function encryptRegisteredFile(
         );
       }
     } catch {
+      // fall through to re-encrypt
+    } finally {
       if (await FileUtils.fileExists(tempPath)) {
         ExecUtils.removeFile(tempPath);
       }

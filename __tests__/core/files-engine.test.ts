@@ -1,7 +1,10 @@
 import fs from 'fs-extra';
 import os from 'os';
 import path from 'path';
-import { processRegisteredFiles } from '../../src/commands/files';
+import {
+  executeFilesEncrypt,
+  processRegisteredFiles,
+} from '../../src/commands/files';
 import { ExecUtils } from '../../src/utils/exec';
 import { InteractiveUtils } from '../../src/utils/interactive';
 
@@ -151,6 +154,28 @@ describe('processRegisteredFiles', () => {
     expect(encryptSpy).not.toHaveBeenCalled(); // identical → skip
   });
 
+  it('leaves no temp file when the idempotency decrypt fails', async () => {
+    await fs.writeFile(path.join(tmpDir, 'cert.p12'), 'data');
+    await fs.writeFile(path.join(tmpDir, 'cert.p12.gpg'), 'oldcipher');
+    // idempotency decrypt writes a temp file but reports failure (corrupt .gpg)
+    decryptSpy.mockImplementation((_enc: string, out: string) => {
+      fs.writeFileSync(out, ''); // 0-byte temp, mimicking gpg failure output
+      return { success: false, message: 'corrupt' };
+    });
+
+    const result = await processRegisteredFiles(
+      [{ path: 'cert.p12' }],
+      tmpDir,
+      { mode: 'encrypt', rawOptions: {} }
+    );
+
+    expect(result.successCount).toBe(1); // re-encrypted
+    const leftover = (await fs.readdir(tmpDir)).filter(f =>
+      f.includes('.temp.')
+    );
+    expect(leftover).toEqual([]);
+  });
+
   it('decrypts a .gpg into the plaintext path', async () => {
     await fs.writeFile(path.join(tmpDir, 'cert.p12.gpg'), 'cipher');
 
@@ -190,5 +215,35 @@ describe('processRegisteredFiles', () => {
     );
 
     expect(result).toEqual({ successCount: 0, errorCount: 2 });
+  });
+});
+
+describe('executeFilesEncrypt (CLI wrapper)', () => {
+  let tmpDir: string;
+
+  beforeEach(async () => {
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'envx-files-cli-'));
+  });
+
+  afterEach(async () => {
+    await fs.remove(tmpDir);
+    jest.restoreAllMocks();
+  });
+
+  it('throws INVALID_ARGS for an unregistered path', async () => {
+    await fs.writeFile(
+      path.join(tmpDir, '.envxrc'),
+      JSON.stringify({ files: [{ path: 'a.json' }] })
+    );
+    await expect(
+      executeFilesEncrypt('not-registered.json', { cwd: tmpDir })
+    ).rejects.toMatchObject({ exitCode: 2 }); // ExitCode.INVALID_ARGS
+  });
+
+  it('warns and returns when the registry is empty', async () => {
+    await fs.writeFile(path.join(tmpDir, '.envxrc'), '{}');
+    await expect(
+      executeFilesEncrypt(undefined, { cwd: tmpDir })
+    ).resolves.toBeUndefined();
   });
 });
