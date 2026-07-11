@@ -108,6 +108,24 @@ export async function executeInteractive(rawOptions: any): Promise<void> {
       existingEnvironments
     );
 
+    // Offer FILES_SECRET when global registered files exist (spec §3)
+    const { entries: registeredFiles } =
+      await FileUtils.getRegisteredFiles(cwd);
+    const hasGlobalFiles = registeredFiles.some(entry => !entry.stage);
+    if (hasGlobalFiles && !envrcConfig[FileUtils.FILES_SECRET_NAME]) {
+      const setFilesSecret = await InteractiveUtils.confirmOperation(
+        `Registered global files found. Set ${FileUtils.FILES_SECRET_NAME} for them?`,
+        true
+      );
+      if (setFilesSecret) {
+        envrcConfig[FileUtils.FILES_SECRET_NAME] = rawOptions.generate
+          ? FileUtils.generateRandomSecret()
+          : await InteractiveUtils.promptPassphrase(
+              `Enter passphrase for ${FileUtils.FILES_SECRET_NAME}:`
+            );
+      }
+    }
+
     // Write the .envrc file
     const writeResult = await FileUtils.writeEnvrc(cwd, envrcConfig);
 

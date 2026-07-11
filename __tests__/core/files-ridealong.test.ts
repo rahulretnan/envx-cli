@@ -110,3 +110,52 @@ describe('registered-files ride-along', () => {
     );
   });
 });
+
+describe('interactive FILES_SECRET step', () => {
+  let tmpDir: string;
+
+  beforeEach(async () => {
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'envx-inter-'));
+    jest.spyOn(InteractiveUtils, 'displayWelcome').mockImplementation(() => {});
+    jest.spyOn(InteractiveUtils, 'setupEnvrc').mockResolvedValue({});
+    jest.spyOn(InteractiveUtils, 'confirmOperation').mockResolvedValue(true);
+    jest
+      .spyOn(InteractiveUtils, 'promptPassphrase')
+      .mockResolvedValue('files-pass');
+  });
+
+  afterEach(async () => {
+    await fs.remove(tmpDir);
+    jest.restoreAllMocks();
+  });
+
+  it('offers FILES_SECRET when a global file is registered', async () => {
+    await fs.writeFile(
+      path.join(tmpDir, '.envxrc'),
+      JSON.stringify({ files: [{ path: 'cert.p12' }] })
+    );
+
+    const { executeInteractive } = await import(
+      '../../src/commands/interactive'
+    );
+    await executeInteractive({ cwd: tmpDir });
+
+    const envrc = await fs.readFile(path.join(tmpDir, '.envrc'), 'utf-8');
+    expect(envrc).toContain('export FILES_SECRET="files-pass"');
+  });
+
+  it('does not offer FILES_SECRET without global files', async () => {
+    await fs.writeFile(
+      path.join(tmpDir, '.envxrc'),
+      JSON.stringify({ files: [{ path: 'gs.json', stage: 'production' }] })
+    );
+
+    const { executeInteractive } = await import(
+      '../../src/commands/interactive'
+    );
+    await executeInteractive({ cwd: tmpDir });
+
+    const envrc = await fs.readFile(path.join(tmpDir, '.envrc'), 'utf-8');
+    expect(envrc).not.toContain('FILES_SECRET');
+  });
+});

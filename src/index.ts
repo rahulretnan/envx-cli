@@ -8,7 +8,7 @@ import { createCreateCommand } from './commands/create';
 import { createDecryptCommand } from './commands/decrypt';
 import { createConfigCommand } from './commands/config';
 import { createEncryptCommand, encryptEnvironment } from './commands/encrypt';
-import { createFilesCommand } from './commands/files';
+import { createFilesCommand, getRegisteredFileStatus } from './commands/files';
 import {
   createInteractiveCommand,
   showQuickStart,
@@ -188,6 +188,26 @@ async function executeList(options: any): Promise<void> {
   if (!envrcExists) {
     console.log(chalk.gray('  Use "envx interactive" to set up secrets'));
   }
+
+  // Registered files section
+  const { root: filesRoot, entries: registered } =
+    await FileUtils.getRegisteredFiles(cwd);
+  if (registered.length > 0) {
+    console.log();
+    CliUtils.subheader('Registered Files');
+    const fileRows: string[][] = [];
+    for (const entry of registered) {
+      const status = await getRegisteredFileStatus(filesRoot, entry);
+      fileRows.push([
+        chalk.cyan(entry.path),
+        entry.stage
+          ? CliUtils.formatEnvironment(entry.stage)
+          : chalk.gray('global'),
+        status.label,
+      ]);
+    }
+    CliUtils.printTable(['Path', 'Stage', 'Status'], fileRows);
+  }
 }
 
 async function executeStatus(options: any): Promise<void> {
@@ -255,6 +275,25 @@ async function executeStatus(options: any): Promise<void> {
 
   if (!envrcExists) {
     recommendations.push('Set up .envrc file with "envx interactive"');
+  }
+
+  // Registered files
+  const { root: filesRoot, entries: registered } =
+    await FileUtils.getRegisteredFiles(cwd);
+  if (registered.length > 0) {
+    let encryptedRegistered = 0;
+    for (const entry of registered) {
+      const status = await getRegisteredFileStatus(filesRoot, entry);
+      if (status.enc) {
+        encryptedRegistered++;
+      }
+      if (status.plain && !status.enc) {
+        recommendations.push(`Encrypt registered file ${entry.path}`);
+      }
+    }
+    console.log(
+      `Registered files: ${chalk.cyan(registered.length)} (${chalk.green(encryptedRegistered)} encrypted)`
+    );
   }
 
   // Security recommendations
