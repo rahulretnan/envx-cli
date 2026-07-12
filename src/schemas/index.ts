@@ -110,10 +110,30 @@ export const stageSecretSchema = z.object({
 
 export const envrcConfigSchema = z.record(z.string(), z.string());
 
+export const registeredFileSchema = z.object({
+  path: z
+    .string()
+    .min(1, 'Path is required')
+    .refine(p => !/^([A-Za-z]:|[\\/])/.test(p), {
+      message: 'Path must be relative to the project root',
+    })
+    .refine(p => !p.toLowerCase().endsWith('.gpg'), {
+      message: 'Register the plaintext path, not the .gpg file',
+    })
+    .refine(p => !p.split(/[\\/]/).includes('..'), {
+      message: 'Path must not escape the project root',
+    }),
+  stage: z
+    .string()
+    .regex(/^[a-zA-Z0-9_-]+$/, 'Invalid stage name')
+    .optional(),
+});
+
 export const envxrcFileConfigSchema = z.object({
   ignore: z.array(z.string()).optional(),
   environments: z.array(z.string()).optional(),
   excludeDirs: z.array(z.string()).optional(),
+  files: z.array(registeredFileSchema).optional(),
 });
 
 export const fileOperationSchema = z.object({

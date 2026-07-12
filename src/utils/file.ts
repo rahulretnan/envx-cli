@@ -11,10 +11,12 @@ import {
   EnvrcConfig,
   EnvxrcConfig,
   FileOperationResult,
+  RegisteredFile,
 } from '../types';
 import { ExecUtils } from './exec';
 
 export class FileUtils {
+  static readonly FILES_SECRET_NAME = 'FILES_SECRET';
   static readonly DEFAULT_IGNORE_PATTERNS = ['example', 'sample', 'template'];
   static readonly DEFAULT_EXCLUDE_DIRS = [
     'node_modules',
@@ -45,9 +47,21 @@ export class FileUtils {
       const parsed = JSON.parse(content);
       return envxrcFileConfigSchema.parse(parsed);
     } catch {
+      // An invalid .envxrc silently disabling ignore patterns and the
+      // files registry is dangerous — warn once per path per process.
+      if (!this.warnedInvalidEnvxrc.has(envxrcPath)) {
+        this.warnedInvalidEnvxrc.add(envxrcPath);
+        console.warn(
+          `Warning: ${envxrcPath} is invalid (bad JSON or schema) — ` +
+            'falling back to defaults. Fix it or run "envx config reset".'
+        );
+      }
       return {};
     }
   }
+
+  /** Paths already warned about in readEnvxrc (avoid repeat spam). */
+  private static warnedInvalidEnvxrc = new Set<string>();
 
   /**
    * Write .envxrc config file
@@ -319,6 +333,118 @@ export class FileUtils {
     }
     const envxrcExists = await this.fileExists(path.join(root, '.envxrc'));
     return envxrcExists ? root : null;
+  }
+
+  /**
+   * Read the registered-files list from the nearest `.envxrc` (upward
+   * walk). Returns the directory holding the registry — which is also the
+   * base for resolving entry paths — plus the entries. When no `.envxrc`
+   * exists anywhere, root falls back to `cwd` and entries are empty.
+   */
+  static async getRegisteredFiles(
+    cwd: string
+  ): Promise<{ root: string; entries: RegisteredFile[] }> {
+    const dir = await this.findEnvxrcUpward(cwd);
+    if (dir === null) {
+      return { root: cwd, entries: [] };
+    }
+    const config = await this.readEnvxrc(dir);
+    return { root: dir, entries: config.files ?? [] };
+  }
+
+  /**
+   * Resolve a user-supplied path against `cwd` and re-base it relative to
+   * `root`, normalized to POSIX separators. Throws when the result would
+   * escape the root (or is the root itself) — registry paths must stay
+   * inside the project.
+   */
+  static rebaseToRoot(inputPath: string, cwd: string, root: string): string {
+    const abs = path.resolve(cwd, inputPath);
+    const rel = path.relative(root, abs);
+    // Escape iff the first segment is exactly '..' — a plain
+    // startsWith('..') would false-reject legal names like '..archive'.
+    const escapes = rel.split(path.sep)[0] === '..';
+    if (rel === '' || escapes || path.isAbsolute(rel)) {
+      throw new Error(
+        `Path must stay inside the project root (${root}): ${inputPath}`
+      );
+    }
+    return rel.split(path.sep).join('/');
+  }
+
+  /**
+   * Append registered-file ignore rules to .gitignore under an
+   * "# EnvX files" section: the plaintext path plus !<path>.gpg so the
+   * encrypted sibling stays committable. Exact-line dedupe (substring
+   * matching would treat "!a.json.gpg" as covering "a.json").
+   */
+  static async addFilesToGitignore(
+    cwd: string,
+    relPaths: string[]
+  ): Promise<FileOperationResult> {
+    const gitignorePath = path.join(cwd, '.gitignore');
+
+    try {
+      let existingContent = '';
+      if (await this.fileExists(gitignorePath)) {
+        existingContent = await fs.readFile(gitignorePath, 'utf-8');
+      }
+
+      const existingLines = new Set(
+        existingContent.split('\n').map(line => line.trim())
+      );
+
+      const missing: string[] = [];
+      for (const rel of relPaths) {
+        for (const line of [rel, `!${rel}.gpg`]) {
+          if (!existingLines.has(line)) {
+            missing.push(line);
+          }
+        }
+      }
+
+      if (missing.length === 0) {
+        return {
+          success: true,
+          message: '.gitignore already contains EnvX file patterns',
+          filePath: gitignorePath,
+        };
+      }
+
+      let newContent: string;
+      const header = '# EnvX files';
+      if (existingLines.has(header)) {
+        // Section exists — insert missing lines right after the header
+        // instead of appending a duplicate section.
+        const lines = existingContent.split('\n');
+        const headerIndex = lines.findIndex(line => line.trim() === header);
+        lines.splice(headerIndex + 1, 0, ...missing);
+        newContent = lines.join('\n');
+        if (!newContent.endsWith('\n')) {
+          newContent += '\n';
+        }
+      } else {
+        newContent = existingContent.trim();
+        newContent +=
+          (newContent ? '\n\n' : '') + [header, ...missing].join('\n');
+        newContent += '\n';
+      }
+
+      await fs.writeFile(gitignorePath, newContent, 'utf-8');
+
+      return {
+        success: true,
+        message: `Added ${missing.length} pattern(s) to .gitignore`,
+        filePath: gitignorePath,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: `Failed to update .gitignore: ${error}`,
+        filePath: gitignorePath,
+        error: error as Error,
+      };
+    }
   }
 
   /**

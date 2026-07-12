@@ -5,6 +5,7 @@ import { ExitCode } from '../types';
 import { CliUtils, ExecUtils } from '../utils/exec';
 import { FileUtils } from '../utils/file';
 import { InteractiveUtils } from '../utils/interactive';
+import { processRegisteredFiles } from './files';
 
 export const createDecryptCommand = (): Command => {
   const command = new Command('decrypt');
@@ -39,7 +40,7 @@ export const createDecryptCommand = (): Command => {
   return command;
 };
 
-async function executeDecrypt(rawOptions: any): Promise<void> {
+export async function executeDecrypt(rawOptions: any): Promise<void> {
   CliUtils.header('Environment File Decryption');
 
   // Validate --all flag compatibility
@@ -68,11 +69,21 @@ async function executeDecrypt(rawOptions: any): Promise<void> {
   const availableEnvironments = await FileUtils.findAllEnvironments(cwd);
 
   if (availableEnvironments.length === 0) {
-    CliUtils.warning('No environment files found in the current directory.');
-    CliUtils.info(
-      'Use the "create" command to create environment files first.'
-    );
-    return;
+    // A project may manage only registered files (no .env.* at all) —
+    // --all must still process those instead of bailing out.
+    const { entries: registeredOnly } = await FileUtils.getRegisteredFiles(cwd);
+    if (!rawOptions.all || registeredOnly.length === 0) {
+      CliUtils.warning('No environment files found in the current directory.');
+      CliUtils.info(
+        'Use the "create" command to create environment files first.'
+      );
+      if (registeredOnly.length > 0) {
+        CliUtils.info(
+          'Registered files exist — use "envx files decrypt" or "envx decrypt --all".'
+        );
+      }
+      return;
+    }
   }
 
   // Handle --all flag
@@ -105,7 +116,32 @@ async function executeDecrypt(rawOptions: any): Promise<void> {
     );
   }
 
-  await processSingleEnvironment(rawOptions, environment, cwd);
+  const envResult = await processSingleEnvironment(
+    rawOptions,
+    environment,
+    cwd
+  );
+
+  // User cancelled the stage operation — do not ride along.
+  if (envResult.cancelled) {
+    return;
+  }
+
+  // Ride-along: decrypt files registered for this stage
+  const { root, entries } = await FileUtils.getRegisteredFiles(cwd);
+  const stageFiles = entries.filter(e => e.stage === environment);
+  if (stageFiles.length > 0) {
+    console.log();
+    CliUtils.subheader('Registered Files');
+    const fileResult = await processRegisteredFiles(stageFiles, root, {
+      mode: 'decrypt',
+      rawOptions,
+      passphraseOverride: envResult.passphrase,
+    });
+    if (fileResult.errorCount > 0) {
+      process.exit(ExitCode.GENERAL_ERROR);
+    }
+  }
 }
 
 async function processAllEnvironments(
@@ -124,6 +160,9 @@ async function processAllEnvironments(
     success: number;
     errors: number;
   }> = [];
+  // Passphrases resolved per stage, reused for that stage's registered
+  // files so ride-along never re-prompts.
+  const stagePassphrases: Record<string, string> = {};
 
   for (const environment of environments) {
     console.log();
@@ -138,6 +177,8 @@ async function processAllEnvironments(
         cwd,
         true
       );
+      stagePassphrases[FileUtils.generateSecretVariableName(environment)] =
+        result.passphrase;
       results.push({
         environment,
         success: result.successCount,
@@ -152,6 +193,26 @@ async function processAllEnvironments(
       results.push({ environment, success: 0, errors: 1 });
       totalErrors++;
     }
+  }
+
+  // Ride-along: process ALL registered files (stage-bound + global)
+  const { root, entries } = await FileUtils.getRegisteredFiles(cwd);
+  if (entries.length > 0) {
+    console.log();
+    CliUtils.subheader('Registered Files');
+    const fileResult = await processRegisteredFiles(entries, root, {
+      mode: 'decrypt',
+      rawOptions,
+      isPartOfAll: true,
+      passphraseByVar: stagePassphrases,
+    });
+    results.push({
+      environment: 'registered files',
+      success: fileResult.successCount,
+      errors: fileResult.errorCount,
+    });
+    totalSuccess += fileResult.successCount;
+    totalErrors += fileResult.errorCount;
   }
 
   // Final summary for all environments
@@ -217,7 +278,12 @@ async function processSingleEnvironment(
   environment: string,
   cwd: string,
   isPartOfAll: boolean = false
-): Promise<{ successCount: number; errorCount: number }> {
+): Promise<{
+  successCount: number;
+  errorCount: number;
+  passphrase: string;
+  cancelled?: boolean;
+}> {
   let passphrase: string = rawOptions.passphrase || '';
 
   // Get passphrase
@@ -277,7 +343,7 @@ async function processSingleEnvironment(
         'Use the "encrypt" command to encrypt environment files first.'
       );
     }
-    return { successCount: 0, errorCount: 0 };
+    return { successCount: 0, errorCount: 0, passphrase };
   }
 
   if (!isPartOfAll) {
@@ -304,7 +370,7 @@ async function processSingleEnvironment(
       const rel = FileUtils.getRelativePath(encPath, cwd);
       console.log(`  would decrypt: ${chalk.cyan(rel)}`);
     }
-    return { successCount: encryptedFiles.length, errorCount: 0 };
+    return { successCount: encryptedFiles.length, errorCount: 0, passphrase };
   }
 
   // Interactive file selection if requested (skip for --all)
@@ -326,7 +392,7 @@ async function processSingleEnvironment(
 
   if (filesToProcess.length === 0) {
     CliUtils.info('No files selected for decryption.');
-    return { successCount: 0, errorCount: 0 };
+    return { successCount: 0, errorCount: 0, passphrase, cancelled: true };
   }
 
   // Check for existing decrypted files and warn if overwrite not specified
@@ -352,7 +418,7 @@ async function processSingleEnvironment(
 
     if (!confirm) {
       CliUtils.info('Operation cancelled.');
-      return { successCount: 0, errorCount: 0 };
+      return { successCount: 0, errorCount: 0, passphrase, cancelled: true };
     }
   }
 
@@ -368,7 +434,7 @@ async function processSingleEnvironment(
     );
     if (!confirm) {
       CliUtils.info('Operation cancelled.');
-      return { successCount: 0, errorCount: 0 };
+      return { successCount: 0, errorCount: 0, passphrase, cancelled: true };
     }
   }
 
@@ -484,5 +550,5 @@ async function processSingleEnvironment(
     }
   }
 
-  return { successCount, errorCount };
+  return { successCount, errorCount, passphrase };
 }

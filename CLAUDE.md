@@ -57,6 +57,9 @@ Each command file in `src/commands/` exports a `createXxxCommand()` function ret
 - **`interactive`** — Inquirer-driven setup for secrets in `.envrc`.
 - **`run`** — Decrypt an env file in memory and spawn a sub-process with variables injected via `process.env`. Supports `-e <stage>`, repeatable `-f/--env-file`, repeatable `--env KEY=VAL`, `--overload`, and `--dry-run`. dotenvx-style precedence: `process.env` wins over files by default. Never writes plaintext to disk. See `docs/superpowers/specs/2026-04-07-envx-run-design.md` for the full design.
 - **`config`** — Manage `.envxrc`. Subcommands: `show`, `ignore list/add/remove`, `exclude list/add/remove`, `reset`.
+- **`files`** — Manage and encrypt/decrypt arbitrary registered secret files (service account JSON, certs, keystores — anything that isn't a `.env.<stage>` file). Subcommands: `add <path> [-e <stage>] [--no-gitignore]`, `remove <path>`, `list`, `encrypt [path] [--dry-run] [-p] [-s]`, `decrypt [path] [--overwrite] [--dry-run] [-p] [-s]`. Registrations live in `.envxrc`'s `files` array. Stage-bound entries ride along `encrypt -e <stage>` / `decrypt -e <stage>` (and `--all`), reusing that stage's resolved passphrase; global (no-stage) entries use a dedicated `FILES_SECRET` variable in `.envrc`.
+
+`encrypt.ts` and `decrypt.ts` import `processRegisteredFiles` from `files.ts` to encrypt/decrypt stage-bound and global registered files as a ride-along step. `executeEncrypt`/`executeDecrypt` are now exported (previously only `createXxxCommand` was) so the ride-along tests can call them directly. Each command's internal `processSingleEnvironment` now returns `{ successCount, errorCount, passphrase }` so the already-resolved stage passphrase can be reused for stage-bound registered files without re-prompting.
 
 ### Utility Classes (Static Methods)
 
@@ -76,6 +79,7 @@ Two distinct config files live alongside each project:
   - `ignore: string[]` — environment names to skip during discovery (case-insensitive exact match). When unset, falls back to `FileUtils.DEFAULT_IGNORE_PATTERNS`. An empty array `[]` is the explicit "no filtering" escape hatch.
   - `excludeDirs: string[]` — directory names excluded from `fast-glob` walks. When unset, falls back to `FileUtils.DEFAULT_EXCLUDE_DIRS`.
   - `environments: string[]` — environments the user opted into managing during `envx init`.
+  - `files: Array<{ path: string; stage?: string }>` — registered secret files, managed via `envx files add/remove/list`. `path` is root-relative (rejects absolute paths, `..`, and `.gpg`). Entries with `stage` ride along that stage's `encrypt`/`decrypt`; entries without `stage` use `FILES_SECRET`.
 
   Read/write through `FileUtils.readEnvxrc`, `writeEnvxrc`, and `mergeEnvxrc`. Validated by `envxrcFileConfigSchema` in `src/schemas/index.ts` (named to avoid collision with the older `envrcConfigSchema`).
 
@@ -98,7 +102,7 @@ Two distinct config files live alongside each project:
 
 ### Types
 
-`src/types/index.ts` — Core interfaces: `CliOptions`, `EncryptOptions`, `DecryptOptions`, `CreateOptions`, `InteractiveOptions`, `EnvFile`, `StageSecret`, `EnvrcConfig` (`Record<string, string>`), `EnvxrcConfig` (`{ ignore?, environments?, excludeDirs? }`), `CommandResult`, `FileOperationResult`, and `ExitCode` enum.
+`src/types/index.ts` — Core interfaces: `CliOptions`, `EncryptOptions`, `DecryptOptions`, `CreateOptions`, `InteractiveOptions`, `EnvFile`, `StageSecret`, `EnvrcConfig` (`Record<string, string>`), `RegisteredFile` (`{ path: string; stage?: string }`), `EnvxrcConfig` (`{ ignore?, environments?, excludeDirs?, files?: RegisteredFile[] }`), `CommandResult`, `FileOperationResult`, and `ExitCode` enum.
 
 ### Configuration Resolution Order
 

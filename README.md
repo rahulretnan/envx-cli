@@ -23,6 +23,7 @@ Environment file encryption and management tool for secure development workflows
   - [envx status](#envx-status)
   - [envx config](#envx-config)
   - [envx run](#envx-run)
+  - [envx files](#envx-files)
 - [Configuration](#configuration)
   - [.envrc File](#envrc-file)
   - [.envxrc File (Project Config)](#envxrc-file-project-config)
@@ -456,7 +457,7 @@ envx config exclude remove build
 
 #### `envx config reset`
 
-Reset the configuration to defaults, removing all custom ignore patterns and directory exclusions.
+Reset ignore patterns and directory exclusions to defaults. Registered files (`files`) and managed environments are preserved — they are project state, not preferences.
 
 ```bash
 envx config reset
@@ -526,6 +527,52 @@ envx run -e production --dry-run -- npm start
 - On decryption failure (wrong passphrase, corrupt file), `envx run` exits with a non-zero code and **does not** fall back to a plain `.env.<stage>` file if one exists. Encrypted-wins means encrypted is the source of truth; silent fallback would hide bugs.
 - The sub-process's exit code propagates back. If `npm test` exits 1, `envx run -e test -- npm test` also exits 1.
 
+### `envx files`
+
+Register arbitrary secret files — service account JSON, certificates, keystores, anything that isn't a `.env.<stage>` file — and encrypt/decrypt them the same way as environment files. Registrations live in `.envxrc`'s `files` array, so the registry is committable project config, not a secret store itself.
+
+Each registered file is either **stage-bound** (tied to one environment) or **global** (not tied to any stage).
+
+#### Usage
+
+```bash
+# Register files
+envx files add certs/signing.p12                             # global — uses FILES_SECRET
+envx files add android/google-services.json -e production    # stage-bound — uses PRODUCTION_SECRET
+envx files add secrets.json --no-gitignore                    # register without touching .gitignore
+
+# Manage the registry
+envx files list                       # registered files + on-disk status
+envx files remove certs/signing.p12   # unregister (leaves .gitignore alone)
+
+# Encrypt / decrypt
+envx files encrypt                    # encrypt every registered file
+envx files encrypt certs/signing.p12  # encrypt just one
+envx files decrypt --overwrite        # decrypt all, no confirmation prompts
+envx files encrypt --dry-run          # preview, no changes
+```
+
+#### Flags
+
+| Flag                            | Subcommands          | Description                                                    |
+| ------------------------------- | -------------------- | -------------------------------------------------------------- |
+| `-e, --environment <env>`       | `add`                | Bind the file to a stage; omit to register a global file.      |
+| `--no-gitignore`                | `add`                | Skip adding the path (and its `.gpg` sibling) to `.gitignore`. |
+| `-p, --passphrase <passphrase>` | `encrypt`, `decrypt` | Passphrase to use directly.                                    |
+| `-s, --secret <secret>`         | `encrypt`, `decrypt` | Secret variable name from `.envrc`.                            |
+| `--overwrite`                   | `decrypt`            | Overwrite existing plaintext files without confirmation.       |
+| `--dry-run`                     | `encrypt`, `decrypt` | Show what would happen without making changes.                 |
+| `-c, --cwd <path>`              | all                  | Working directory.                                             |
+
+#### Behavior
+
+- **Registry**: entries are `{ path, stage? }` in `.envxrc`'s `files` array, with `path` root-relative (relative to the nearest `.envrc`/`.envxrc`/`.git` ancestor). Paths that resolve outside the project root are rejected (via `rebaseToRoot`); an absolute path pointing inside the root is accepted and normalized to a root-relative path. `.gpg` paths and hand-edited `.envxrc` entries with absolute/`..` paths are rejected by the schema.
+- **Stage-bound vs global**: an entry with `stage` set is encrypted/decrypted with that stage's `<STAGE>_SECRET` — the same variable `envx encrypt`/`envx decrypt` already use. An entry without a `stage` uses a dedicated `FILES_SECRET` variable in `.envrc`.
+- **Ride-along**: `envx encrypt -e <stage>` and `envx decrypt -e <stage>` automatically process any registered files bound to that stage, reusing the passphrase already resolved for the stage — no separate `envx files` call needed. `envx encrypt --all` / `envx decrypt --all` process **every** registered file, stage-bound and global alike.
+- **Idempotency and safety**: `files encrypt` skips a file whose existing `.gpg` already decrypts to identical content; `files decrypt` backs up an existing plaintext file before overwriting it and restores the backup if decryption fails — the same behavior as `envx encrypt`/`envx decrypt`.
+- **`.gitignore`**: `files add` appends the plaintext path plus a `!<path>.gpg` negation under an `# EnvX files` section, so the encrypted sibling stays committable. `--no-gitignore` skips this; `files remove` never touches `.gitignore`.
+- **Git-tracked warning**: `files add` warns if the plaintext path is already tracked by git, since the secret may already be committed to history.
+
 ## Configuration
 
 ### `.envrc` File
@@ -553,11 +600,12 @@ EnvX supports a `.envxrc` JSON file in your project root for per-project configu
 
 **Fields:**
 
-| Field          | Type       | Description                                                                                                                                                                                                                                         |
-| -------------- | ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `ignore`       | `string[]` | Patterns to exclude from environment discovery. Environments whose names match any pattern (case-insensitive) are filtered from `--all`, `list`, and `status` operations. Defaults to `["example", "sample", "template"]` if not set.               |
-| `environments` | `string[]` | List of managed environments. Set during `envx init` based on your selection.                                                                                                                                                                       |
-| `excludeDirs`  | `string[]` | Directories to exclude from file discovery. Prevents scanning into build artifacts and dependency directories. Defaults to `["node_modules", ".git", "dist", ".next", ".turbo", ".output", ".nuxt", ".cache", "build", "coverage", ".svelte-kit"]`. |
+| Field          | Type                    | Description                                                                                                                                                                                                                                         |
+| -------------- | ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ignore`       | `string[]`              | Patterns to exclude from environment discovery. Environments whose names match any pattern (case-insensitive) are filtered from `--all`, `list`, and `status` operations. Defaults to `["example", "sample", "template"]` if not set.               |
+| `environments` | `string[]`              | List of managed environments. Set during `envx init` based on your selection.                                                                                                                                                                       |
+| `excludeDirs`  | `string[]`              | Directories to exclude from file discovery. Prevents scanning into build artifacts and dependency directories. Defaults to `["node_modules", ".git", "dist", ".next", ".turbo", ".output", ".nuxt", ".cache", "build", "coverage", ".svelte-kit"]`. |
+| `files`        | `Array<{path, stage?}>` | Registered secret files (root-relative paths). Stage-bound files join `encrypt/decrypt -e <stage>`; global files use `FILES_SECRET`. Managed via `envx files add/remove/list`.                                                                      |
 
 You can manage this file through the CLI:
 
@@ -593,6 +641,8 @@ Examples:
 - `STAGING_SECRET`
 - `PRODUCTION_SECRET`
 - `LOCAL_SECRET`
+
+Stage-bound [registered files](#envx-files) reuse their stage's `<STAGE>_SECRET`. Global registered files (no stage) use a fixed `FILES_SECRET` variable instead.
 
 ### Environment Filtering
 
@@ -1046,18 +1096,19 @@ The test suite prioritizes **essential functionality** over comprehensive covera
 
 ### Test Coverage
 
-**Current Status**: 181 tests passing across 7 test suites
+**Current Status**: 380+ tests across 17 suites (run `npm test` for the live count)
 
-- **Core Tests**: 165 tests covering essential functionality
-  - Schema validation: 25 tests (command input validation)
-  - File utilities: 39 tests (path manipulation, secret generation, gitignore)
-  - Command logic: 25 tests (workflow patterns and decision logic)
-  - All-flag functionality: 15 tests (batch operations, error handling)
-  - EnvxrcConfig infrastructure: 23 tests (read/write/merge, ignore patterns, filtering)
-  - Config command: 7 tests (show, add, remove, reset operations)
-  - Copy command: 31 tests (single/multi-directory, encrypted/unencrypted)
+- **Core Tests** cover essential functionality
+  - Schema validation (command inputs, registered-file path rules)
+  - File utilities (path manipulation, secret generation, gitignore, registry helpers)
+  - Command logic (workflow patterns and decision logic)
+  - All-flag functionality (batch operations, error handling)
+  - EnvxrcConfig infrastructure (read/write/merge, ignore patterns, filtering)
+  - Config command (show, add, remove, reset operations)
+  - Copy command (single/multi-directory, encrypted/unencrypted)
+  - Registered files (registry management, encrypt/decrypt engine, ride-along, review-fix regressions)
 
-- **Integration Tests**: 16 tests covering real CLI usage
+- **Integration Tests** cover real CLI usage
   - Help/version commands
   - Create command functionality
   - Init command validation
@@ -1065,6 +1116,7 @@ The test suite prioritizes **essential functionality** over comprehensive covera
   - Dry run flag (encrypt/decrypt)
   - Copy `--all` flag
   - Environment filtering (list, status)
+  - Registered files (add/list/remove, binary round-trip, `--all` ride-along)
   - Error handling scenarios
   - Environment validation
 
