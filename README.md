@@ -66,6 +66,7 @@ EnvX is a command-line tool that helps you securely manage environment files acr
 
 - **GPG-based encryption** for maximum security
 - **Stage-based management** (development, staging, production, etc.)
+- **Arbitrary secret files** — register any non-`.env` secret (`google-services.json`, certs, keystores) with `envx files` and encrypt it with the same workflow
 - **Interactive setup** with guided configuration
 - **Batch operations** on multiple files and directories
 - **Secret management** with `.envrc` integration

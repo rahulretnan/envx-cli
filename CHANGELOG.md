@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+# [1.5.0](https://github.com/rahulretnan/envx-cli/compare/v1.4.2...v1.5.0) (2026-07-12)
+
+
+### Bug Fixes
+
+* address full-review findings across files feature and repo ([04a7df8](https://github.com/rahulretnan/envx-cli/commit/04a7df8307800ec190945b402eb5c4b4d40a8faf))
+* **files:** always clean idempotency temp file + cover files encrypt CLI wrapper ([e73259c](https://github.com/rahulretnan/envx-cli/commit/e73259c012a016fede467c39fb6e95bd5ea4f869))
+* **files:** use argv git-tracked check to prevent shell injection ([40236ef](https://github.com/rahulretnan/envx-cli/commit/40236ef552135a766f887b32bb74d1c7c058d748))
+
+
+### Features
+
+* **files:** add RegisteredFile type and .envxrc files schema ([5633998](https://github.com/rahulretnan/envx-cli/commit/5633998fdbd06551fa77be781b59544922d0f843))
+* **files:** encrypt/decrypt ride-along for registered files ([3b8ca13](https://github.com/rahulretnan/envx-cli/commit/3b8ca1314049adb994d358f92bcd1a11fb74eed2))
+* **files:** envx files add/remove/list registry management ([26e6719](https://github.com/rahulretnan/envx-cli/commit/26e67194dc1172ec316c0c4070677c7f41ead616))
+* **files:** FileUtils registry helpers (getRegisteredFiles, rebaseToRoot, addFilesToGitignore) ([86ab7e9](https://github.com/rahulretnan/envx-cli/commit/86ab7e9cf083b31a6c98823e9ef8aab466d0477f))
+* **files:** list/status sections and interactive FILES_SECRET step ([6a0a91e](https://github.com/rahulretnan/envx-cli/commit/6a0a91ec4b3eaa392ca1731fa8cbe45ff22cadcb))
+* **files:** processRegisteredFiles engine + files encrypt/decrypt ([d961913](https://github.com/rahulretnan/envx-cli/commit/d9619135b6d24c1f18d9242bbeb912314310ab5f))
+
 ## [1.4.2](https://github.com/rahulretnan/envx-cli/compare/v1.4.1...v1.4.2) (2026-04-08)
 
 
