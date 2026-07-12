@@ -24,13 +24,13 @@ envx create -e staging --overwrite
 
 ## Flags
 
-| Flag                      | Meaning                                                 |
-| ------------------------- | ------------------------------------------------------- |
-| `-e, --environment <env>` | Stage name. Prompted if omitted (non-interactive).      |
-| `-t, --template <path>`   | Seed content from this file (absolute or cwd-relative). |
-| `-i, --interactive`       | Multi-environment wizard.                               |
-| `--overwrite`             | Overwrite existing files without confirmation.          |
-| `-c, --cwd <path>`        | Working directory.                                      |
+| Flag                      | Meaning                                                     |
+| ------------------------- | ----------------------------------------------------------- |
+| `-e, --environment <env>` | Stage name. If omitted, an interactive prompt asks for one. |
+| `-t, --template <path>`   | Seed content from this file (absolute or cwd-relative).     |
+| `-i, --interactive`       | Multi-environment wizard.                                   |
+| `--overwrite`             | Overwrite existing files without confirmation.              |
+| `-c, --cwd <path>`        | Working directory.                                          |
 
 ## Behavior
 

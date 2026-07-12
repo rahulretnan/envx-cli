@@ -16,10 +16,10 @@ useful to share across the team).
 
 Split them into two files with opposite git policies:
 
-| File      | Format                        | Holds                                   | Git           |
-| --------- | ----------------------------- | --------------------------------------- | ------------- |
-| `.envrc`  | direnv shell (`export K="v"`) | GPG passphrases (`<STAGE>_SECRET`)      | **ignored**   |
-| `.envxrc` | JSON                          | `ignore`, `excludeDirs`, `environments` | **committed** |
+| File      | Format                        | Holds                                                                        | Git           |
+| --------- | ----------------------------- | ---------------------------------------------------------------------------- | ------------- |
+| `.envrc`  | direnv shell (`export K="v"`) | GPG passphrases (`<STAGE>_SECRET`, `FILES_SECRET`)                           | **ignored**   |
+| `.envxrc` | JSON                          | `ignore`, `excludeDirs`, `environments`, `files` (registered-files registry) | **committed** |
 
 `.envrc` follows the direnv convention so the same file can auto-load secrets into
 the shell via `direnv allow`. `.envxrc` is a plain JSON config managed by

@@ -15,15 +15,23 @@ intentionally not tested. See also root [`TESTING.md`](../../TESTING.md).
 
 ## Suites
 
-| Suite          | Location                            | Covers                                                                            |
-| -------------- | ----------------------------------- | --------------------------------------------------------------------------------- |
-| Schemas        | `__tests__/core/schemas.test.ts`    | Zod input validation for every command; `--all` refinements                       |
-| File utils     | `__tests__/core/file.test.ts`       | Discovery, path manipulation, secret generation, `updateGitignore` pattern counts |
-| Commands       | `__tests__/core/commands.test.ts`   | Workflow/decision logic patterns                                                  |
-| All-flag       | `__tests__/core/all-flag.test.ts`   | Batch operations, `--all` compatibility, independent per-item failure             |
-| `.envxrc`      | `__tests__/core/envxrc.test.ts`     | read/write/merge, ignore filtering, defaults, upward discovery                    |
-| Config command | `__tests__/core/config.test.ts`     | `show`, ignore/exclude `add`/`remove`, `reset`                                    |
-| Integration    | `__tests__/integration/cli.test.ts` | Real CLI via `execSync` on `dist/index.js`                                        |
+| Suite             | Location                                 | Covers                                                                            |
+| ----------------- | ---------------------------------------- | --------------------------------------------------------------------------------- |
+| Schemas           | `__tests__/core/schemas.test.ts`         | Zod input validation for every command; `--all` refinements                       |
+| Files schema      | `__tests__/core/files-schema.test.ts`    | `registeredFileSchema` path rules; `.envxrc` `files` field                        |
+| File utils        | `__tests__/core/file.test.ts`            | Discovery, path manipulation, secret generation, `updateGitignore` pattern counts |
+| Files utils       | `__tests__/core/files-utils.test.ts`     | `getRegisteredFiles`, `rebaseToRoot`, `addFilesToGitignore`                       |
+| Commands          | `__tests__/core/commands.test.ts`        | Workflow/decision logic patterns                                                  |
+| Files command     | `__tests__/core/files-command.test.ts`   | `files add`/`remove` registry management                                          |
+| Files engine      | `__tests__/core/files-engine.test.ts`    | `processRegisteredFiles` grouping, idempotency, dry-run, CLI wrappers             |
+| Ride-along        | `__tests__/core/files-ridealong.test.ts` | encrypt/decrypt ride-along, interactive `FILES_SECRET` step                       |
+| Review fixes      | `__tests__/core/review-fixes.test.ts`    | Cancellation, files-only projects, tmpdir isolation, reset preservation           |
+| Git tracked       | `__tests__/core/git-tracked.test.ts`     | `isPathTrackedByGit` incl. injection-safety                                       |
+| All-flag          | `__tests__/core/all-flag.test.ts`        | Batch operations, `--all` compatibility, independent per-item failure             |
+| `.envxrc`         | `__tests__/core/envxrc.test.ts`          | read/write/merge, ignore filtering, defaults, upward discovery                    |
+| Config command    | `__tests__/core/config.test.ts`          | `show`, ignore/exclude `add`/`remove`, `reset`                                    |
+| Integration       | `__tests__/integration/cli.test.ts`      | Real CLI via `execSync` on `dist/index.js`                                        |
+| Files integration | `__tests__/integration/files.test.ts`    | `files` end-to-end incl. binary round-trip and `--all` ride-along                 |
 
 ## How to run
 

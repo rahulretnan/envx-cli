@@ -11,7 +11,11 @@ Module: Commands
 ## Summary
 
 Encrypt unencrypted `.env.<stage>` files into `.env.<stage>.gpg` using symmetric
-GPG. Source: `src/commands/encrypt.ts`.
+GPG. Registered secret files **ride along**: `-e <stage>` also encrypts files
+bound to that stage (reusing the stage passphrase), and `--all` also encrypts
+every registered file — stage-bound with their stage secret, globals with
+`FILES_SECRET`. See [feature-files](./feature-files.md).
+Source: `src/commands/encrypt.ts`.
 
 ## Usage
 
@@ -41,7 +45,9 @@ envx encrypt -e production --overwrite     # skip confirmation
 
 1. If `--all`: reject `-e` and `-i` (throws before work).
 2. `isGpgAvailable()` guard → exit `GPG_ERROR (4)` with install help if missing.
-3. `findAllEnvironments(cwd)` (ignore-filtered). If none → warn + return.
+3. `findAllEnvironments(cwd)` (ignore-filtered). If none → warn + return —
+   unless `--all` and registered files exist (files-only project), in which
+   case the registered files are still processed.
 4. Single stage without `-e`: auto-pick if exactly one exists, else prompt.
    Validate the stage is in the discovered set.
 5. Resolve passphrase: `-p` → `-s` secret in `.envrc` → `<STAGE>_SECRET` in
@@ -53,6 +59,12 @@ envx encrypt -e production --overwrite     # skip confirmation
    compare hashes. Identical → "already encrypted, skipping" (counts as success).
    Different → re-encrypt. Temp file always cleaned up.
 9. `encryptFile` (passphrase via stdin) → writes `.gpg`.
+10. **Ride-along:** after env files, registered files run through
+    `processRegisteredFiles` — for `-e <stage>` only that stage's entries
+    (reusing the resolved passphrase); for `--all` every entry, with each
+    stage's already-resolved passphrase reused (`passphraseByVar`) and globals
+    using `FILES_SECRET`. A **declined confirm cancels the whole stage** —
+    ride-along is skipped too.
 
 ## Passphrase resolution
 

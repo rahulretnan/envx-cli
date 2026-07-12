@@ -457,7 +457,7 @@ envx config exclude remove build
 
 #### `envx config reset`
 
-Reset the configuration to defaults, removing all custom ignore patterns and directory exclusions.
+Reset ignore patterns and directory exclusions to defaults. Registered files (`files`) and managed environments are preserved — they are project state, not preferences.
 
 ```bash
 envx config reset
@@ -1096,18 +1096,19 @@ The test suite prioritizes **essential functionality** over comprehensive covera
 
 ### Test Coverage
 
-**Current Status**: 181 tests passing across 7 test suites
+**Current Status**: 380+ tests across 17 suites (run `npm test` for the live count)
 
-- **Core Tests**: 165 tests covering essential functionality
-  - Schema validation: 25 tests (command input validation)
-  - File utilities: 39 tests (path manipulation, secret generation, gitignore)
-  - Command logic: 25 tests (workflow patterns and decision logic)
-  - All-flag functionality: 15 tests (batch operations, error handling)
-  - EnvxrcConfig infrastructure: 23 tests (read/write/merge, ignore patterns, filtering)
-  - Config command: 7 tests (show, add, remove, reset operations)
-  - Copy command: 31 tests (single/multi-directory, encrypted/unencrypted)
+- **Core Tests** cover essential functionality
+  - Schema validation (command inputs, registered-file path rules)
+  - File utilities (path manipulation, secret generation, gitignore, registry helpers)
+  - Command logic (workflow patterns and decision logic)
+  - All-flag functionality (batch operations, error handling)
+  - EnvxrcConfig infrastructure (read/write/merge, ignore patterns, filtering)
+  - Config command (show, add, remove, reset operations)
+  - Copy command (single/multi-directory, encrypted/unencrypted)
+  - Registered files (registry management, encrypt/decrypt engine, ride-along, review-fix regressions)
 
-- **Integration Tests**: 16 tests covering real CLI usage
+- **Integration Tests** cover real CLI usage
   - Help/version commands
   - Create command functionality
   - Init command validation
@@ -1115,6 +1116,7 @@ The test suite prioritizes **essential functionality** over comprehensive covera
   - Dry run flag (encrypt/decrypt)
   - Copy `--all` flag
   - Environment filtering (list, status)
+  - Registered files (add/list/remove, binary round-trip, `--all` ride-along)
   - Error handling scenarios
   - Environment validation
 

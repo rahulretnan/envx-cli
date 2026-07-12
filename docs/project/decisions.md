@@ -11,12 +11,12 @@ Scope: Project-wide
 Index of architecture decisions. Each links to a full ADR. These were
 back-filled from the existing implementation on 2026-07-12.
 
-| ADR                                            | Decision                                                                                          | Status   |
-| ---------------------------------------------- | ------------------------------------------------------------------------------------------------- | -------- |
-| [0001](./adr/0001-gpg-symmetric-encryption.md) | Symmetric GPG (`gpg -c`) with a per-stage passphrase, not asymmetric keys                         | Accepted |
-| [0002](./adr/0002-envrc-envxrc-split.md)       | Split config: `.envrc` (secret passphrases, git-ignored) vs `.envxrc` (project config, committed) | Accepted |
-| [0003](./adr/0003-upward-config-discovery.md)  | Discover `.envrc`/`.envxrc` by walking upward to the project root; stage files stay cwd-local     | Accepted |
-| [0004](./adr/0004-run-in-memory-decrypt.md)    | `envx run` decrypts in memory and injects into a sub-process; plaintext never touches disk        | Accepted |
+| ADR                                            | Decision                                                                                                                                          | Status   |
+| ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
+| [0001](./adr/0001-gpg-symmetric-encryption.md) | Symmetric GPG (`gpg -c`) with a per-stage passphrase, not asymmetric keys                                                                         | Accepted |
+| [0002](./adr/0002-envrc-envxrc-split.md)       | Split config: `.envrc` (secret passphrases incl. `FILES_SECRET`, git-ignored) vs `.envxrc` (project config incl. the `files` registry, committed) | Accepted |
+| [0003](./adr/0003-upward-config-discovery.md)  | Discover `.envrc`/`.envxrc` by walking upward to the project root; stage files stay cwd-local                                                     | Accepted |
+| [0004](./adr/0004-run-in-memory-decrypt.md)    | `envx run` decrypts in memory and injects into a sub-process; plaintext never touches disk                                                        | Accepted |
 
 ## Cross-cutting conventions (not full ADRs)
 

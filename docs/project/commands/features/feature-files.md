@@ -1,6 +1,6 @@
 ---
 Status: Implemented
-Version: 1.0
+Version: 1.1
 Owner: Rahul Retnan
 Last Updated: 2026-07-12
 Module: Commands
@@ -63,8 +63,11 @@ given.
    Warns if the plaintext path is already tracked by git (`isPathTrackedByGit`) —
    the secret may already be in history. Writes the updated array via
    `FileUtils.mergeEnvxrc`. Unless `--no-gitignore`, appends the path plus
-   `!<path>.gpg` to `.gitignore` under an `# EnvX files` section
-   (`addFilesToGitignore`) so the encrypted sibling stays committable.
+   `!<path>.gpg` to `.gitignore` under a single `# EnvX files` section
+   (`addFilesToGitignore` — repeated adds insert under the existing header, never
+   duplicate it) so the encrypted sibling stays committable. If a parent-directory
+   ignore rule (e.g. `certs/`) still defeats the negation, `add` warns via
+   `git check-ignore` that the `.gpg` will not be committable.
 3. **`remove <path>`**: re-bases and removes the matching entry; warns (no-op) if
    not registered. `.gitignore` is left untouched by design.
 4. **`list`**: prints every registered entry with its stage (or `global`), whether
@@ -80,15 +83,20 @@ given.
    - GPG-tests each distinct passphrase once (`testGpgOperation`) before touching
      files in that group.
    - **Encrypt**: skips (counts success) a file whose existing `.gpg` decrypts to
-     content identical to the current plaintext; otherwise re-encrypts. Missing
+     content identical to the current plaintext; otherwise re-encrypts. If the
+     existing `.gpg` cannot be decrypted with the current passphrase, it warns
+     ("different passphrase?") before re-encrypting over it. The comparison temp
+     file lives in `os.tmpdir()` — never next to the registered file — so a crash
+     mid-compare cannot leave plaintext in a committable location. Missing
      plaintext is skipped with a warning (or an info note if only the `.gpg`
      exists).
    - **Decrypt**: skips with a warning if no `.gpg` exists. If a plaintext already
      exists, prompts to overwrite unless `--overwrite` or `isPartOfAll` (ride-along
-     under `--all`) is set. Takes a backup before writing, removes it on success,
-     restores it and reports an error on GPG failure.
-   - `--dry-run` reports every selected entry's would-be action and its secret
-     variable without invoking GPG.
+     under `--all`) is set. The pre-decrypt backup also lives in `os.tmpdir()`;
+     it is removed on success and restored (moved back) on GPG failure.
+   - `--dry-run` reports each entry's would-be action and its secret variable
+     without invoking GPG; entries whose source file is missing are reported as
+     `would skip (missing)` and not counted.
 
 ## Passphrase resolution
 
@@ -100,11 +108,13 @@ prompt.
 
 `envx encrypt -e <stage>` / `envx decrypt -e <stage>` call `processRegisteredFiles`
 on the subset of entries bound to that stage, passing the passphrase already
-resolved for the stage as `passphraseOverride` — no second prompt. `envx encrypt
+resolved for the stage as `passphraseOverride` — no second prompt. A declined
+confirmation cancels the whole stage operation, ride-along included. `envx encrypt
 --all` / `envx decrypt --all` pass **every** registered entry (stage-bound and
-global) with `isPartOfAll: true`, so global entries are resolved against
-`FILES_SECRET` and existing-plaintext confirmation prompts are skipped the same way
-`--all` skips them for `.env.<stage>` files. See
+global) with `isPartOfAll: true` and a `passphraseByVar` map of each stage's
+already-resolved passphrase, so stage groups never re-prompt; global entries
+resolve against `FILES_SECRET`. `--all` also works in **files-only projects**
+(registered files but no `.env.*`). See
 [feature-encrypt](./feature-encrypt.md) / [feature-decrypt](./feature-decrypt.md).
 
 ## Edge cases (from code)
@@ -140,6 +150,7 @@ path given to `encrypt`/`decrypt`) · `FILE_ERROR 3` (`.envxrc` write failure) �
 
 ## Changelog
 
-| Version | Date       | Changes                                  |
-| ------- | ---------- | ---------------------------------------- |
-| 1.0     | 2026-07-12 | Initial draft — `envx files` implemented |
+| Version | Date       | Changes                                                                                                                                                                                       |
+| ------- | ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1.1     | 2026-07-12 | Review fixes: tmpdir temp/backup isolation, dry-run missing-skip, undecryptable-`.gpg` warning, parent-ignore warning, single gitignore header, `--all` passphrase reuse + files-only support |
+| 1.0     | 2026-07-12 | Initial draft — `envx files` implemented                                                                                                                                                      |

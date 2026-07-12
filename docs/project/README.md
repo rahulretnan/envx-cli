@@ -30,7 +30,7 @@ built and why_.
 | [tech-stack.md](./tech-stack.md)                       | Runtime, dependencies, tooling, and why each was chosen                                                              |
 | [architecture-overview.md](./architecture-overview.md) | Diagrams: component layers, command dispatch, config resolution, encrypt/decrypt & `run` sequences, upward discovery |
 | [commands/commands.md](./commands/commands.md)         | The one "module" — command inventory, shared behavior, the `--all` matrix                                            |
-| [commands/features/](./commands/features/)             | One spec per command (encrypt, decrypt, create, copy, interactive, run, config, project commands)                    |
+| [commands/features/](./commands/features/)             | One spec per command (encrypt, decrypt, create, copy, interactive, run, config, files, project commands)             |
 | [glossary.md](./glossary.md)                           | Terms: stage, secret, `.envrc` vs `.envxrc`, project root, ignore/exclude                                            |
 | [decisions.md](./decisions.md) + [adr/](./adr/)        | Architecture decisions and their rationale                                                                           |
 | [test-plan.md](./test-plan.md)                         | Test surface: core suites, integration suites, what is intentionally not tested                                      |
@@ -48,4 +48,4 @@ If any of those surfaces is ever added, generate the matching doc then.
 
 | Module                             | Docs            | Status      |
 | ---------------------------------- | --------------- | ----------- |
-| [Commands](./commands/commands.md) | 8 feature specs | Implemented |
+| [Commands](./commands/commands.md) | 9 feature specs | Implemented |

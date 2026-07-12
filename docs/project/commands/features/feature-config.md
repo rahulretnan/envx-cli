@@ -39,8 +39,10 @@ All accept `-c, --cwd <path>`.
   `cwd`.
 - `add`/`remove` are case-insensitive and warn (not error) on no-op (already
   present / not present).
-- `reset` writes `{ ignore: DEFAULT_IGNORE_PATTERNS, excludeDirs: DEFAULT_EXCLUDE_DIRS }`
-  to `cwd` (does not preserve `environments`).
+- `reset` restores `ignore` and `excludeDirs` to defaults while **preserving**
+  `files` (the registered-files registry) and `environments` — those are
+  project state, not preferences. It targets the nearest `.envxrc` (upward
+  walk), falling back to `cwd` when none exists.
 
 ## Defaults
 

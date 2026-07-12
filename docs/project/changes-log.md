@@ -11,7 +11,7 @@ files. The files themselves carry their own local changelog tables.
 ```markdown
 ## YYYY-MM-DDTHH:MM:SSZ — <one-line summary>
 
-**Change type**: additive | breaking | rename | removal | architectural | typo | copy
+**Change type**: initial-reverse-engineer | additive | breaking | rename | removal | architectural | typo | copy
 **Triggered by**: <user request / discovery / audit>
 
 **Files rewritten** (N):
@@ -23,6 +23,43 @@ files. The files themselves carry their own local changelog tables.
 
 - [ ] <action>
 ```
+
+---
+
+## 2026-07-12 — Full-review fixes: cancellation, files-only projects, tmpdir isolation
+
+**Change type**: additive
+**Triggered by**: consolidated code review (CodeRabbit + repo pass + final
+whole-branch review) — all findings fixed in commit `04a7df8`
+
+**Code changes documented**: cancellation halts ride-along; `list`/`status`/
+`--all` work in files-only projects; `--all` reuses stage passphrases
+(`passphraseByVar`); idempotency temp + decrypt backup moved to `os.tmpdir()`;
+warn on undecryptable existing `.gpg`; dry-run reports missing files as skips;
+`config reset` preserves `files`/`environments`; single `# EnvX files` header;
+parent-ignore-rule warning on `files add`; `rebaseToRoot` accepts `..`-prefixed
+names; schema rejects `.GPG`/drive-relative; invalid `.envxrc` warns.
+
+**Files rewritten** (12):
+
+- `README.md` (root) — reset wording, test-coverage section refreshed
+- `docs/project/commands/features/feature-files.md` v1.0 → v1.1
+- `docs/project/commands/features/feature-encrypt.md` — ride-along documented
+- `docs/project/commands/features/feature-decrypt.md` — ride-along documented
+- `docs/project/commands/features/feature-config.md` — reset preservation
+- `docs/project/commands/features/feature-create.md` — `-e` prompt wording
+- `docs/project/commands/commands.md` — passphrase bullet incl. `FILES_SECRET`
+- `docs/project/glossary.md` — `--all` definition includes registered files
+- `docs/project/decisions.md` + `docs/project/adr/0002-envrc-envxrc-split.md` —
+  `files` field in the `.envxrc` contract
+- `docs/project/architecture-overview.md` — `files` command in diagram 1
+- `docs/project/test-plan.md` — suite table matches actual test files
+- `docs/project/README.md` — 9 feature specs
+
+**ADR triggered**: none.
+**Downstream actions required**:
+
+- [ ] None outstanding.
 
 ---
 

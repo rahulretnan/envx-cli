@@ -53,8 +53,9 @@ flowchart LR
 - **Discovery:** `FileUtils.findAllEnvironments(cwd)` globs `**/.env.*`, skips
   `excludeDirs`, filters `ignore` names. `findEnvFiles(stage, cwd)` returns plain +
   `.gpg` variants, each flagged `encrypted`.
-- **Passphrase resolution** (encrypt/decrypt/copy/run): `--passphrase` → `-s
+- **Passphrase resolution** (encrypt/decrypt/copy/run/files): `--passphrase` → `-s
 <secret>` from `.envrc` → `<STAGE>_SECRET` from `.envrc` → interactive prompt.
+  Global registered files use `FILES_SECRET` in place of `<STAGE>_SECRET`.
   `.envrc` is read via `readEnvrcNearest` (upward walk).
 - **GPG guard:** commands that touch crypto check `isGpgAvailable()` and, for
   encrypt/decrypt, run `testGpgOperation` (a temp-file round-trip) before real work.
@@ -77,9 +78,11 @@ flowchart LR
 when `--all` is set; `validateCopyOptions` throws if `--all` is set without `-e`.
 
 **Registered files ride along `encrypt`/`decrypt`:** `-e <stage>` also processes any
-`files` registry entries bound to that stage (reusing the resolved passphrase);
-`--all` also processes **every** registered entry, stage-bound and global alike
-(global entries resolve against `FILES_SECRET`). See
+`files` registry entries bound to that stage (reusing the resolved passphrase; a
+declined confirm cancels ride-along too); `--all` also processes **every**
+registered entry, stage-bound and global alike (stage passphrases reused via
+`passphraseByVar`, globals resolve against `FILES_SECRET`) — and works in
+files-only projects with no `.env.*`. See
 [feature-files](./features/feature-files.md).
 
 ## Cross-cutting

@@ -11,7 +11,11 @@ Module: Commands
 ## Summary
 
 Decrypt `.env.<stage>.gpg` files back to plaintext `.env.<stage>`. Mirror of
-`encrypt`. Source: `src/commands/decrypt.ts`.
+`encrypt`, including the registered-files **ride-along**: `-e <stage>` also
+decrypts that stage's registered files; `--all` decrypts every registered file
+(globals via `FILES_SECRET`) and works in files-only projects. A declined
+confirm cancels the stage including ride-along.
+See [feature-files](./feature-files.md). Source: `src/commands/decrypt.ts`.
 
 ## Usage
 

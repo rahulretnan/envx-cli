@@ -28,6 +28,7 @@ flowchart TB
     Int[interactive]
     Run[run]
     Cfg[config]
+    Fil[files<br/>registry + engine]
   end
 
   subgraph Utils[Static utility classes · src/utils/*]
@@ -50,6 +51,7 @@ flowchart TB
   Prog --> Cmds
   Cmds --> Zod
   Cmds --> Exec & Cli & File & Inter
+  Enc & Dec -->|ride-along| Fil
   Exec --> GPG & FS & Child
   File --> FS
 ```
