@@ -114,10 +114,10 @@ export const registeredFileSchema = z.object({
   path: z
     .string()
     .min(1, 'Path is required')
-    .refine(p => !/^([A-Za-z]:[\\/]|[\\/])/.test(p), {
+    .refine(p => !/^([A-Za-z]:|[\\/])/.test(p), {
       message: 'Path must be relative to the project root',
     })
-    .refine(p => !p.endsWith('.gpg'), {
+    .refine(p => !p.toLowerCase().endsWith('.gpg'), {
       message: 'Register the plaintext path, not the .gpg file',
     })
     .refine(p => !p.split(/[\\/]/).includes('..'), {

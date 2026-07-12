@@ -136,14 +136,22 @@ async function executeList(options: any): Promise<void> {
   CliUtils.header('Environment Files');
 
   const environments = await FileUtils.findAllEnvironments(cwd);
+  // Load the registry up front — a files-only project (no .env.* at all)
+  // must still show its registered files instead of bailing out.
+  const { root: filesRoot, entries: registered } =
+    await FileUtils.getRegisteredFiles(cwd);
 
-  if (environments.length === 0) {
+  if (environments.length === 0 && registered.length === 0) {
     CliUtils.warning('No environment files found in the current directory.');
     console.log();
     CliUtils.info('To get started:');
     console.log(chalk.cyan('  envx init'));
     console.log(chalk.cyan('  envx create -i'));
     return;
+  }
+
+  if (environments.length === 0) {
+    CliUtils.warning('No environment files found in the current directory.');
   }
 
   const tableRows: string[][] = [];
@@ -190,8 +198,6 @@ async function executeList(options: any): Promise<void> {
   }
 
   // Registered files section
-  const { root: filesRoot, entries: registered } =
-    await FileUtils.getRegisteredFiles(cwd);
   if (registered.length > 0) {
     console.log();
     CliUtils.subheader('Registered Files');
@@ -228,8 +234,12 @@ async function executeStatus(options: any): Promise<void> {
 
   // Environment files status
   const environments = await FileUtils.findAllEnvironments(cwd);
+  // Load the registry up front — a files-only project (no .env.* at all)
+  // must still report its registered files instead of bailing out.
+  const { root: filesRoot, entries: registered } =
+    await FileUtils.getRegisteredFiles(cwd);
 
-  if (environments.length === 0) {
+  if (environments.length === 0 && registered.length === 0) {
     CliUtils.warning('No environment files found.');
     console.log();
     CliUtils.info('Recommendations:');
@@ -238,33 +248,38 @@ async function executeStatus(options: any): Promise<void> {
     return;
   }
 
-  CliUtils.subheader('Environment Summary');
-
-  let totalFiles = 0;
-  let encryptedFiles = 0;
-  let unencryptedFiles = 0;
   const recommendations: string[] = [];
 
-  for (const env of environments) {
-    const envFiles = await FileUtils.findEnvFiles(env, cwd);
-    const encrypted = envFiles.filter(f => f.encrypted).length;
-    const unencrypted = envFiles.filter(f => !f.encrypted).length;
+  if (environments.length === 0) {
+    CliUtils.warning('No environment files found.');
+  } else {
+    CliUtils.subheader('Environment Summary');
 
-    totalFiles += encrypted + unencrypted;
-    encryptedFiles += encrypted;
-    unencryptedFiles += unencrypted;
+    let totalFiles = 0;
+    let encryptedFiles = 0;
+    let unencryptedFiles = 0;
 
-    if (unencrypted > 0 && ['production', 'staging'].includes(env)) {
-      recommendations.push(`Encrypt ${env} environment files for security`);
+    for (const env of environments) {
+      const envFiles = await FileUtils.findEnvFiles(env, cwd);
+      const encrypted = envFiles.filter(f => f.encrypted).length;
+      const unencrypted = envFiles.filter(f => !f.encrypted).length;
+
+      totalFiles += encrypted + unencrypted;
+      encryptedFiles += encrypted;
+      unencryptedFiles += unencrypted;
+
+      if (unencrypted > 0 && ['production', 'staging'].includes(env)) {
+        recommendations.push(`Encrypt ${env} environment files for security`);
+      }
     }
-  }
 
-  console.log(`Total environments: ${chalk.cyan(environments.length)}`);
-  console.log(`Total files: ${chalk.cyan(totalFiles)}`);
-  console.log(`Encrypted: ${chalk.green(encryptedFiles)}`);
-  console.log(
-    `Unencrypted: ${unencryptedFiles > 0 ? chalk.yellow(unencryptedFiles) : chalk.gray(unencryptedFiles)}`
-  );
+    console.log(`Total environments: ${chalk.cyan(environments.length)}`);
+    console.log(`Total files: ${chalk.cyan(totalFiles)}`);
+    console.log(`Encrypted: ${chalk.green(encryptedFiles)}`);
+    console.log(
+      `Unencrypted: ${unencryptedFiles > 0 ? chalk.yellow(unencryptedFiles) : chalk.gray(unencryptedFiles)}`
+    );
+  }
 
   // Secrets status
   console.log();
@@ -278,8 +293,6 @@ async function executeStatus(options: any): Promise<void> {
   }
 
   // Registered files
-  const { root: filesRoot, entries: registered } =
-    await FileUtils.getRegisteredFiles(cwd);
   if (registered.length > 0) {
     let encryptedRegistered = 0;
     for (const entry of registered) {
@@ -289,6 +302,11 @@ async function executeStatus(options: any): Promise<void> {
       }
       if (status.plain && !status.enc) {
         recommendations.push(`Encrypt registered file ${entry.path}`);
+      }
+      if (!status.plain && !status.enc) {
+        recommendations.push(
+          `Registered file missing on disk: ${entry.path} (restore it or run "envx files remove")`
+        );
       }
     }
     console.log(

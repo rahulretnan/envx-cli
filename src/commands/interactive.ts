@@ -51,6 +51,18 @@ export async function executeInteractive(rawOptions: any): Promise<void> {
   const envrcPath = path.join(cwd, '.envrc');
   const envrcExists = await FileUtils.fileExists(envrcPath);
 
+  // Writing a new .envrc here while an ancestor already has one would
+  // shadow the project-root secrets for commands run from this directory.
+  if (!envrcExists) {
+    const ancestorEnvrcDir = await FileUtils.findEnvrcUpward(cwd);
+    if (ancestorEnvrcDir && ancestorEnvrcDir !== cwd) {
+      CliUtils.warning(
+        `An .envrc already exists at ${ancestorEnvrcDir}. Creating one here ` +
+          'will shadow it for envx commands run from this directory.'
+      );
+    }
+  }
+
   if (envrcExists) {
     CliUtils.info(
       `Found existing .envrc file: ${CliUtils.formatPath(envrcPath, cwd)}`

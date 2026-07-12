@@ -1,5 +1,7 @@
 import chalk from 'chalk';
 import { Command } from 'commander';
+import fs from 'fs-extra';
+import os from 'os';
 import path from 'path';
 import { registeredFileSchema, validateSchema } from '../schemas';
 import { ExitCode, RegisteredFile } from '../types';
@@ -179,6 +181,17 @@ export async function executeFilesAdd(
         `Could not update .gitignore: ${gitignoreResult.message}`
       );
     }
+
+    // A parent-directory ignore rule (e.g. `certs/`) makes the
+    // `!<path>.gpg` negation ineffective — git cannot re-include files
+    // under an ignored directory. Detect and warn.
+    if (ExecUtils.isPathIgnoredByGit(`${rel}.gpg`, root)) {
+      CliUtils.warning(
+        `${rel}.gpg is still ignored by git (a parent-directory rule ` +
+          'likely overrides the negation) — the encrypted file will NOT ' +
+          'be committable until you adjust .gitignore.'
+      );
+    }
   }
 }
 
@@ -253,6 +266,11 @@ export interface FilesProcessOptions {
   rawOptions: any;
   /** Ride-along: an already-resolved stage passphrase (skips resolution). */
   passphraseOverride?: string;
+  /**
+   * Ride-along (--all): passphrases already resolved per secret variable
+   * (e.g. PRODUCTION_SECRET → "..."), reused so groups never re-prompt.
+   */
+  passphraseByVar?: Record<string, string>;
   isPartOfAll?: boolean;
 }
 
@@ -268,7 +286,8 @@ export async function processRegisteredFiles(
   root: string,
   opts: FilesProcessOptions
 ): Promise<{ successCount: number; errorCount: number }> {
-  const { mode, rawOptions, passphraseOverride, isPartOfAll } = opts;
+  const { mode, rawOptions, passphraseOverride, passphraseByVar, isPartOfAll } =
+    opts;
   let successCount = 0;
   let errorCount = 0;
 
@@ -291,8 +310,13 @@ export async function processRegisteredFiles(
   const testedPassphrases = new Set<string>();
 
   for (const [secretVar, groupEntries] of groups) {
-    // Resolve passphrase: override > -p > -s > <secretVar> > prompt
-    let passphrase: string = passphraseOverride || rawOptions.passphrase || '';
+    // Resolve passphrase: override > per-stage map > -p > -s > <secretVar>
+    // > prompt
+    let passphrase: string =
+      passphraseOverride ||
+      passphraseByVar?.[secretVar] ||
+      rawOptions.passphrase ||
+      '';
     if (!passphrase || passphrase.trim() === '') {
       if (rawOptions.secret && envrcConfig[rawOptions.secret]) {
         passphrase = envrcConfig[rawOptions.secret];
@@ -309,9 +333,20 @@ export async function processRegisteredFiles(
       }
     }
 
-    // Dry-run: report and count, never touch gpg
+    // Dry-run: report and count, never touch gpg. Only count files that
+    // would actually be processed — a missing source is a skip, not a
+    // would-do.
     if (rawOptions.dryRun) {
       for (const entry of groupEntries) {
+        const abs = path.join(root, entry.path);
+        const sourcePath =
+          mode === 'encrypt' ? abs : FileUtils.getEncryptedPath(abs);
+        if (!(await FileUtils.fileExists(sourcePath))) {
+          console.log(
+            `  would skip (missing): ${chalk.cyan(entry.path)} (${secretVar})`
+          );
+          continue;
+        }
         console.log(
           `  would ${mode}: ${chalk.cyan(entry.path)} (${secretVar})`
         );
@@ -379,9 +414,15 @@ async function encryptRegisteredFile(
     return 'skip';
   }
 
-  // Idempotency: skip when the existing .gpg decrypts to identical content
+  // Idempotency: skip when the existing .gpg decrypts to identical
+  // content. The temp plaintext lives in os.tmpdir(), never next to the
+  // registered file, so even a crash mid-compare cannot leave plaintext
+  // in a committable location.
   if (await FileUtils.fileExists(encryptedPath)) {
-    const tempPath = `${abs}.temp.${Date.now()}`;
+    const tempPath = path.join(
+      os.tmpdir(),
+      `envx-idem-${Date.now()}-${path.basename(abs)}`
+    );
     try {
       const decryptResult = ExecUtils.decryptFile(
         encryptedPath,
@@ -398,6 +439,11 @@ async function encryptRegisteredFile(
         }
         CliUtils.warning(
           `${entry.path}: has changes — updating encrypted version`
+        );
+      } else {
+        CliUtils.warning(
+          `${entry.path}: could not decrypt existing encrypted copy ` +
+            '(different passphrase?) — re-encrypting over it'
         );
       }
     } catch {
@@ -446,9 +492,15 @@ async function decryptRegisteredFile(
     }
   }
 
+  // Backup lives in os.tmpdir(), never next to the registered file, so a
+  // crash mid-decrypt cannot leave a plaintext sibling in the repo.
   let backupPath: string | null = null;
   if (plainExists) {
-    backupPath = await FileUtils.createBackup(abs);
+    backupPath = path.join(
+      os.tmpdir(),
+      `envx-backup-${Date.now()}-${path.basename(abs)}`
+    );
+    await fs.copy(abs, backupPath);
   }
 
   const result = ExecUtils.decryptFile(encryptedPath, abs, passphrase);

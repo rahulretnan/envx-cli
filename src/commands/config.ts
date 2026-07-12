@@ -351,13 +351,28 @@ async function executeExcludeRemove(dir: string, options: any): Promise<void> {
 async function executeConfigReset(options: any): Promise<void> {
   const cwd = options.cwd || ExecUtils.getCurrentDir();
 
-  const result = await FileUtils.writeEnvxrc(cwd, {
+  // Reset only the filter settings. The files registry and the enrolled
+  // environments are project state, not preferences — wiping them here
+  // would silently unmanage registered secrets. Also target the nearest
+  // .envxrc (like every other config write) instead of always cwd.
+  const envxrcDir = await FileUtils.findEnvxrcUpward(cwd);
+  const targetDir = envxrcDir ?? cwd;
+  const existing = await FileUtils.readEnvxrc(targetDir);
+
+  const result = await FileUtils.writeEnvxrc(targetDir, {
+    ...(existing.environments ? { environments: existing.environments } : {}),
+    ...(existing.files ? { files: existing.files } : {}),
     ignore: [...FileUtils.DEFAULT_IGNORE_PATTERNS],
     excludeDirs: [...FileUtils.DEFAULT_EXCLUDE_DIRS],
   });
 
   if (result.success) {
-    CliUtils.success('Reset .envxrc to default configuration.');
+    CliUtils.success(
+      'Reset ignore patterns and excluded directories to defaults.'
+    );
+    if (existing.files?.length || existing.environments?.length) {
+      CliUtils.info('Registered files and managed environments were kept.');
+    }
   } else {
     CliUtils.error(`Failed to reset config: ${result.message}`);
   }

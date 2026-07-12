@@ -47,9 +47,21 @@ export class FileUtils {
       const parsed = JSON.parse(content);
       return envxrcFileConfigSchema.parse(parsed);
     } catch {
+      // An invalid .envxrc silently disabling ignore patterns and the
+      // files registry is dangerous — warn once per path per process.
+      if (!this.warnedInvalidEnvxrc.has(envxrcPath)) {
+        this.warnedInvalidEnvxrc.add(envxrcPath);
+        console.warn(
+          `Warning: ${envxrcPath} is invalid (bad JSON or schema) — ` +
+            'falling back to defaults. Fix it or run "envx config reset".'
+        );
+      }
       return {};
     }
   }
+
+  /** Paths already warned about in readEnvxrc (avoid repeat spam). */
+  private static warnedInvalidEnvxrc = new Set<string>();
 
   /**
    * Write .envxrc config file
@@ -349,7 +361,10 @@ export class FileUtils {
   static rebaseToRoot(inputPath: string, cwd: string, root: string): string {
     const abs = path.resolve(cwd, inputPath);
     const rel = path.relative(root, abs);
-    if (rel === '' || rel.startsWith('..') || path.isAbsolute(rel)) {
+    // Escape iff the first segment is exactly '..' — a plain
+    // startsWith('..') would false-reject legal names like '..archive'.
+    const escapes = rel.split(path.sep)[0] === '..';
+    if (rel === '' || escapes || path.isAbsolute(rel)) {
       throw new Error(
         `Path must stay inside the project root (${root}): ${inputPath}`
       );
@@ -396,10 +411,24 @@ export class FileUtils {
         };
       }
 
-      let newContent = existingContent.trim();
-      newContent +=
-        (newContent ? '\n\n' : '') + ['# EnvX files', ...missing].join('\n');
-      newContent += '\n';
+      let newContent: string;
+      const header = '# EnvX files';
+      if (existingLines.has(header)) {
+        // Section exists — insert missing lines right after the header
+        // instead of appending a duplicate section.
+        const lines = existingContent.split('\n');
+        const headerIndex = lines.findIndex(line => line.trim() === header);
+        lines.splice(headerIndex + 1, 0, ...missing);
+        newContent = lines.join('\n');
+        if (!newContent.endsWith('\n')) {
+          newContent += '\n';
+        }
+      } else {
+        newContent = existingContent.trim();
+        newContent +=
+          (newContent ? '\n\n' : '') + [header, ...missing].join('\n');
+        newContent += '\n';
+      }
 
       await fs.writeFile(gitignorePath, newContent, 'utf-8');
 

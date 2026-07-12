@@ -278,6 +278,25 @@ export class ExecUtils {
   }
 
   /**
+   * Check whether a path is ignored by git (argv array, no shell).
+   * `git check-ignore -q` exits 0 when ignored, 1 when not ignored,
+   * 128 on fatal errors (e.g. not a repo) — only 0 means ignored.
+   * Used to detect a parent-directory ignore rule that would keep a
+   * `!<path>.gpg` negation from ever taking effect.
+   */
+  static isPathIgnoredByGit(relPath: string, cwd: string): boolean {
+    try {
+      const result = spawnSync('git', ['check-ignore', '-q', '--', relPath], {
+        cwd,
+        stdio: 'pipe',
+      });
+      return result.status === 0;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
    * Get current working directory
    */
   static getCurrentDir(): string {

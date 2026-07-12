@@ -69,11 +69,21 @@ export async function executeEncrypt(rawOptions: any): Promise<void> {
   const availableEnvironments = await FileUtils.findAllEnvironments(cwd);
 
   if (availableEnvironments.length === 0) {
-    CliUtils.warning('No environment files found in the current directory.');
-    CliUtils.info(
-      'Use the "create" command to create environment files first.'
-    );
-    return;
+    // A project may manage only registered files (no .env.* at all) —
+    // --all must still process those instead of bailing out.
+    const { entries: registeredOnly } = await FileUtils.getRegisteredFiles(cwd);
+    if (!rawOptions.all || registeredOnly.length === 0) {
+      CliUtils.warning('No environment files found in the current directory.');
+      CliUtils.info(
+        'Use the "create" command to create environment files first.'
+      );
+      if (registeredOnly.length > 0) {
+        CliUtils.info(
+          'Registered files exist — use "envx files encrypt" or "envx encrypt --all".'
+        );
+      }
+      return;
+    }
   }
 
   // Handle --all flag
@@ -112,6 +122,11 @@ export async function executeEncrypt(rawOptions: any): Promise<void> {
     cwd
   );
 
+  // User cancelled the stage operation — do not ride along.
+  if (envResult.cancelled) {
+    return;
+  }
+
   // Ride-along: encrypt files registered for this stage
   const { root, entries } = await FileUtils.getRegisteredFiles(cwd);
   const stageFiles = entries.filter(e => e.stage === environment);
@@ -145,6 +160,9 @@ async function processAllEnvironments(
     success: number;
     errors: number;
   }> = [];
+  // Passphrases resolved per stage, reused for that stage's registered
+  // files so ride-along never re-prompts.
+  const stagePassphrases: Record<string, string> = {};
 
   for (const environment of environments) {
     console.log();
@@ -159,6 +177,8 @@ async function processAllEnvironments(
         cwd,
         true
       );
+      stagePassphrases[FileUtils.generateSecretVariableName(environment)] =
+        result.passphrase;
       results.push({
         environment,
         success: result.successCount,
@@ -184,6 +204,7 @@ async function processAllEnvironments(
       mode: 'encrypt',
       rawOptions,
       isPartOfAll: true,
+      passphraseByVar: stagePassphrases,
     });
     results.push({
       environment: 'registered files',
@@ -240,7 +261,12 @@ async function processSingleEnvironment(
   environment: string,
   cwd: string,
   isPartOfAll: boolean = false
-): Promise<{ successCount: number; errorCount: number; passphrase: string }> {
+): Promise<{
+  successCount: number;
+  errorCount: number;
+  passphrase: string;
+  cancelled?: boolean;
+}> {
   let passphrase: string = rawOptions.passphrase || '';
 
   // Get passphrase
@@ -335,7 +361,7 @@ async function processSingleEnvironment(
 
   if (filesToProcess.length === 0) {
     CliUtils.info('No files selected for encryption.');
-    return { successCount: 0, errorCount: 0, passphrase };
+    return { successCount: 0, errorCount: 0, passphrase, cancelled: true };
   }
 
   // Confirm operation (skip for --all)
@@ -345,7 +371,7 @@ async function processSingleEnvironment(
     );
     if (!confirm) {
       CliUtils.info('Operation cancelled.');
-      return { successCount: 0, errorCount: 0, passphrase };
+      return { successCount: 0, errorCount: 0, passphrase, cancelled: true };
     }
   }
 
@@ -367,7 +393,9 @@ async function processSingleEnvironment(
       const encryptedExists = await FileUtils.fileExists(encryptedPath);
 
       if (encryptedExists) {
-        // Compare with existing encrypted version
+        // Compare with existing encrypted version. Temp file cleanup
+        // lives in a single `finally` so no branch (success, failed
+        // decrypt, thrown error, or the `continue` below) can leak it.
         const tempDecryptedPath = `${envFile.path}.temp.${Date.now()}`;
 
         try {
@@ -382,11 +410,6 @@ async function processSingleEnvironment(
               envFile.path,
               tempDecryptedPath
             );
-
-            // Cleanup temp file
-            if (await FileUtils.fileExists(tempDecryptedPath)) {
-              ExecUtils.removeFile(tempDecryptedPath);
-            }
 
             if (filesIdentical) {
               CliUtils.success(
@@ -403,13 +426,13 @@ async function processSingleEnvironment(
             );
           }
         } catch {
-          // Cleanup temp file on error
-          if (await FileUtils.fileExists(tempDecryptedPath)) {
-            ExecUtils.removeFile(tempDecryptedPath);
-          }
           CliUtils.warning(
             'Error comparing with existing encrypted file - proceeding with encryption'
           );
+        } finally {
+          if (await FileUtils.fileExists(tempDecryptedPath)) {
+            ExecUtils.removeFile(tempDecryptedPath);
+          }
         }
       }
 
