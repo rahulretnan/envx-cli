@@ -1,12 +1,21 @@
+import * as childProcess from 'child_process';
 import fs from 'fs-extra';
 import os from 'os';
 import path from 'path';
 import {
   getUpdateNote,
   isNewer,
+  maybeRefreshInBackground,
   readCache,
   writeCache,
 } from '../../src/utils/update-check';
+
+// Mock spawn so the background-refresh test can never create a real process
+// (jest.spyOn can't redefine the non-configurable compiled namespace here).
+jest.mock('child_process', () => ({
+  ...jest.requireActual('child_process'),
+  spawn: jest.fn(),
+}));
 
 describe('isNewer', () => {
   it.each([
@@ -59,5 +68,15 @@ describe('cache', () => {
     expect(getUpdateNote('1.5.0')).toContain('1.5.0');
     expect(getUpdateNote('1.5.0')).toContain('1.6.0');
     expect(getUpdateNote('1.6.0')).toBeNull();
+  });
+});
+
+describe('maybeRefreshInBackground', () => {
+  afterEach(() => jest.clearAllMocks());
+
+  it('does not spawn under ts-node/jest (__filename is .ts)', () => {
+    // No cache written -> stale is true, but the .js-only guard blocks spawn.
+    maybeRefreshInBackground();
+    expect(childProcess.spawn).not.toHaveBeenCalled();
   });
 });

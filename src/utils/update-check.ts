@@ -106,6 +106,9 @@ export function maybeRefreshInBackground(): void {
       detached: true,
       stdio: 'ignore',
     });
+    // An async spawn failure (EMFILE/EACCES/EPERM) emits 'error' on the child;
+    // an unhandled 'error' on an EventEmitter throws, which would crash the CLI.
+    child.on('error', () => {});
     child.unref();
   } catch {
     // never let a background refresh affect the CLI
