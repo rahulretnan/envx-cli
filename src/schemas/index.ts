@@ -250,3 +250,24 @@ export type RunSchemaType = z.infer<typeof runSchema>;
 
 export const validateRunOptions = (data: unknown) =>
   validateSchema(runSchema, data);
+
+export const SKILL_AGENTS = ['agents', 'claude', 'cursor', 'codex'] as const;
+
+export const skillOptionsSchema = z.object({
+  cwd: z.string().optional(),
+  agent: z.array(z.enum(SKILL_AGENTS)).optional(),
+  force: z.boolean().optional(),
+});
+
+export function validateSkillOptions(
+  options: unknown
+): z.infer<typeof skillOptionsSchema> {
+  const result = skillOptionsSchema.safeParse(options);
+  if (!result.success) {
+    const issues = result.error.issues
+      .map(i => `${i.path.join('.') || 'options'}: ${i.message}`)
+      .join('; ');
+    throw new Error(`Invalid skill options — ${issues}`);
+  }
+  return result.data;
+}

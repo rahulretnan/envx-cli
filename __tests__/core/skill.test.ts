@@ -1,5 +1,7 @@
 import fs from 'fs-extra';
+import os from 'os';
 import path from 'path';
+import { executeSkillAdd } from '../../src/commands/skill';
 
 const TEMPLATE_PATH = path.resolve(__dirname, '../../skills/envx/SKILL.md');
 
@@ -19,5 +21,92 @@ describe('skill template', () => {
     expect(content).toContain('envx files add');
     expect(content).toContain('.envrc');
     expect(content).toContain('NEVER');
+  });
+});
+
+describe('envx skill add', () => {
+  let tmpDir: string;
+
+  beforeEach(async () => {
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'envx-skill-'));
+  });
+
+  afterEach(async () => {
+    await fs.remove(tmpDir);
+  });
+
+  const canonical = () => path.join(tmpDir, '.agents/skills/envx/SKILL.md');
+
+  it('always writes the canonical .agents copy', async () => {
+    await executeSkillAdd({ cwd: tmpDir });
+
+    const template = await fs.readFile(TEMPLATE_PATH, 'utf-8');
+    expect(await fs.readFile(canonical(), 'utf-8')).toBe(template);
+  });
+
+  it('copies into detected agent dirs', async () => {
+    await fs.ensureDir(path.join(tmpDir, '.claude'));
+
+    await executeSkillAdd({ cwd: tmpDir });
+
+    expect(
+      await fs.pathExists(path.join(tmpDir, '.claude/skills/envx/SKILL.md'))
+    ).toBe(true);
+    expect(
+      await fs.pathExists(path.join(tmpDir, '.cursor/skills/envx/SKILL.md'))
+    ).toBe(false);
+  });
+
+  it('--agent overrides detection', async () => {
+    await fs.ensureDir(path.join(tmpDir, '.claude'));
+
+    await executeSkillAdd({ cwd: tmpDir, agent: ['cursor'] });
+
+    expect(
+      await fs.pathExists(path.join(tmpDir, '.cursor/skills/envx/SKILL.md'))
+    ).toBe(true);
+    expect(
+      await fs.pathExists(path.join(tmpDir, '.claude/skills/envx/SKILL.md'))
+    ).toBe(false);
+    expect(await fs.pathExists(canonical())).toBe(true);
+  });
+
+  it('is idempotent on re-run', async () => {
+    await executeSkillAdd({ cwd: tmpDir });
+    await executeSkillAdd({ cwd: tmpDir });
+
+    const template = await fs.readFile(TEMPLATE_PATH, 'utf-8');
+    expect(await fs.readFile(canonical(), 'utf-8')).toBe(template);
+  });
+
+  it('preserves local edits unless --force', async () => {
+    await executeSkillAdd({ cwd: tmpDir });
+    await fs.writeFile(canonical(), 'locally edited');
+
+    await executeSkillAdd({ cwd: tmpDir });
+    expect(await fs.readFile(canonical(), 'utf-8')).toBe('locally edited');
+
+    await executeSkillAdd({ cwd: tmpDir, force: true });
+    const template = await fs.readFile(TEMPLATE_PATH, 'utf-8');
+    expect(await fs.readFile(canonical(), 'utf-8')).toBe(template);
+  });
+
+  it('rejects unknown agent names', async () => {
+    await expect(
+      executeSkillAdd({ cwd: tmpDir, agent: ['vscode'] })
+    ).rejects.toThrow(/Invalid skill options/);
+  });
+
+  it('installs at the project root when run from a subdirectory', async () => {
+    await fs.ensureDir(path.join(tmpDir, '.git'));
+    const sub = path.join(tmpDir, 'packages/app');
+    await fs.ensureDir(sub);
+
+    await executeSkillAdd({ cwd: sub });
+
+    expect(await fs.pathExists(canonical())).toBe(true);
+    expect(
+      await fs.pathExists(path.join(sub, '.agents/skills/envx/SKILL.md'))
+    ).toBe(false);
   });
 });
