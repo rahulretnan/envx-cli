@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+# [1.6.0](https://github.com/rahulretnan/envx-cli/compare/v1.5.0...v1.6.0) (2026-07-13)
+
+
+### Bug Fixes
+
+* **hints:** attach no-op error listener to refresh child; cover refresh guard ([d419602](https://github.com/rahulretnan/envx-cli/commit/d4196024d5eba90e63bc13eef767674b304d7f21))
+* **hints:** sanitize registry version string; harden worker; deterministic refresh test ([555673b](https://github.com/rahulretnan/envx-cli/commit/555673b7a8be852bad53b2a8e35b7399d4868ebf))
+* **skill:** CRLF-tolerant idempotency check, accurate flags doc, init failure test ([8d3ec49](https://github.com/rahulretnan/envx-cli/commit/8d3ec49e5b55a1f70d0cb74cd71253ade7cda9b7))
+
+
+### Features
+
+* **hints:** show update note + tip after commands; docs and opt-out ([f18a316](https://github.com/rahulretnan/envx-cli/commit/f18a31673231e638c07d7deeff64a95bce6e9177))
+* **hints:** suppression gate, tips list, printAdvisories orchestrator ([1ebbc9f](https://github.com/rahulretnan/envx-cli/commit/1ebbc9ff8c24c500725621f47fc671faeaf3addb))
+* **hints:** update-check cache, version compare, background refresh ([131c230](https://github.com/rahulretnan/envx-cli/commit/131c2305517f570825de14a25b1116a7a5cbc69f))
+* **init:** offer agent skill install during envx init ([01f6ea5](https://github.com/rahulretnan/envx-cli/commit/01f6ea5c56b72dc9c9d86328ba67069662549331))
+* **skill:** add bundled agent SKILL.md template ([a2108ec](https://github.com/rahulretnan/envx-cli/commit/a2108ec2abeb108d341984bcc51e0829226b7f00))
+* **skill:** add envx skill add/remove command ([8be3016](https://github.com/rahulretnan/envx-cli/commit/8be3016d6c5557c07b279237c018b07258503c9d))
+* **skill:** executeSkillAdd installs SKILL.md to universal + detected agent dirs ([46396e7](https://github.com/rahulretnan/envx-cli/commit/46396e7e9d80120c9339d258410d5a158f5d5606))
+
 # [1.5.0](https://github.com/rahulretnan/envx-cli/compare/v1.4.2...v1.5.0) (2026-07-12)
 
 
