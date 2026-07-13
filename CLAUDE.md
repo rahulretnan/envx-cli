@@ -45,7 +45,7 @@ Integration tests in `__tests__/integration/cli.test.ts` shell out to the compil
 
 ### Entry Point & CLI Framework
 
-`src/index.ts` — Creates the Commander.js program, registers subcommands, and defines the inline `list` (alias `ls`), `status`, `init`, and `version` commands. Exported `createProgram()` allows module usage. The `init` command orchestrates the full first-run flow: detect environments, discover and offer to ignore non-secret ones, write `.envxrc`, update `.gitignore`, run interactive secret setup, and optionally encrypt selected environments.
+`src/index.ts` — Creates the Commander.js program, registers subcommands, and defines the inline `list` (alias `ls`), `status`, `init`, and `version` commands. Exported `createProgram()` allows module usage. The `init` command orchestrates the full first-run flow: detect environments, discover and offer to ignore non-secret ones, write `.envxrc`, update `.gitignore`, offer to install the agent skill, run interactive secret setup, and optionally encrypt selected environments.
 
 ### Command Pattern
 

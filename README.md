@@ -189,8 +189,9 @@ The init wizard will:
 4. Offer to add non-selected environments to the ignore list in `.envxrc`
 5. Save your selected environments to `.envxrc`
 6. Update `.gitignore` with recommended patterns
-7. Optionally start interactive secret setup
-8. Optionally encrypt your environment files immediately after setup
+7. Offer to install the envx agent skill for AI coding agents (Claude Code, Cursor, Codex)
+8. Optionally start interactive secret setup
+9. Optionally encrypt your environment files immediately after setup
 
 **Options:**
 

@@ -107,8 +107,9 @@ involvement — this command only copies a static template file.
   root and installs matching copies at `.claude/skills/envx/SKILL.md`,
   `.cursor/skills/envx/SKILL.md`, `.codex/skills/envx/SKILL.md`.
 - **Idempotency:** a target whose existing content is byte-identical to the
-  template is skipped silently ("already up to date"); a target that differs
-  (locally edited) is skipped with a warning unless `--force` is passed.
+  template is skipped and reported as "already up to date" (info-level); a
+  target that differs (locally edited) is skipped with a warning unless
+  `--force` is passed.
   `skill remove` deletes each installed `skills/envx/` directory outright and
   reports if none were found.
 - **Init integration:** `envx init` prompts to run the same install (default

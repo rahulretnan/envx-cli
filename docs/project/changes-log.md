@@ -39,8 +39,9 @@ files. The files themselves carry their own local changelog tables.
 `createSkillCommand`, registered in `src/index.ts`; `skill add` installs to
 `.agents/skills/envx/SKILL.md` (always) plus any of `.claude`/`.cursor`/`.codex`
 detected at the project root (or explicit `--agent <names...>`), skipping
-identical copies silently and locally-edited copies with a warning unless
-`--force`; `skill remove` deletes all installed copies; `envx init` now
+identical copies (reported as "already up to date") and locally-edited copies
+with a warning unless `--force`; `skill remove` deletes all installed copies;
+`envx init` now
 prompts (default yes) to run the same install right after the `.gitignore`
 step, warning but not failing `init` on error; `executeInit` is now exported
 from `src/index.ts` for tests.
