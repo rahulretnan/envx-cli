@@ -106,7 +106,8 @@ describe('envx skill add', () => {
     const lf = await fs.readFile(canonical(), 'utf-8');
     await fs.writeFile(canonical(), lf.replace(/\n/g, '\r\n'));
 
-    await executeSkillAdd({ cwd: tmpDir });
+    // force would rewrite to LF if the normalized-equal check didn't fire first
+    await executeSkillAdd({ cwd: tmpDir, force: true });
 
     const after = await fs.readFile(canonical(), 'utf-8');
     expect(after).toContain('\r\n');
