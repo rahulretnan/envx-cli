@@ -1,6 +1,8 @@
 import fs from 'fs-extra';
 import path from 'path';
+import { Command } from 'commander';
 import { validateSkillOptions } from '../schemas';
+import { ExitCode } from '../types';
 import { CliUtils, ExecUtils } from '../utils/exec';
 import { FileUtils } from '../utils/file';
 
@@ -85,3 +87,69 @@ export async function executeSkillAdd(rawOptions: any): Promise<void> {
     'Commit the installed SKILL.md files so agents on every machine get them.'
   );
 }
+
+export async function executeSkillRemove(rawOptions: any): Promise<void> {
+  const options = validateSkillOptions(rawOptions);
+  const cwd = options.cwd || ExecUtils.getCurrentDir();
+  const root = (await FileUtils.findProjectRoot(cwd)) ?? cwd;
+
+  let removed = 0;
+  for (const relPath of Object.values(AGENT_TARGETS)) {
+    // Remove the whole skills/envx dir, not just SKILL.md.
+    const skillDir = path.dirname(path.join(root, relPath));
+    if (await fs.pathExists(skillDir)) {
+      await fs.remove(skillDir);
+      CliUtils.success(`Removed ${FileUtils.getRelativePath(skillDir, root)}`);
+      removed++;
+    }
+  }
+
+  if (removed === 0) {
+    CliUtils.info('No envx skill installations found.');
+  }
+}
+
+export const createSkillCommand = (): Command => {
+  const skill = new Command('skill');
+
+  skill.description('Manage the envx agent skill for AI coding agents');
+
+  skill
+    .command('add')
+    .description(
+      'Install SKILL.md for AI agents (.agents + detected agent dirs)'
+    )
+    .option(
+      '-a, --agent <agents...>',
+      'Target agents explicitly: agents, claude, cursor, codex'
+    )
+    .option('-f, --force', 'Overwrite locally modified copies')
+    .option('-c, --cwd <path>', 'Working directory path')
+    .action(async options => {
+      try {
+        await executeSkillAdd(options);
+      } catch (error) {
+        CliUtils.error(
+          `Skill add failed: ${error instanceof Error ? error.message : String(error)}`
+        );
+        process.exit(ExitCode.GENERAL_ERROR);
+      }
+    });
+
+  skill
+    .command('remove')
+    .description('Remove all installed copies of the envx agent skill')
+    .option('-c, --cwd <path>', 'Working directory path')
+    .action(async options => {
+      try {
+        await executeSkillRemove(options);
+      } catch (error) {
+        CliUtils.error(
+          `Skill remove failed: ${error instanceof Error ? error.message : String(error)}`
+        );
+        process.exit(ExitCode.GENERAL_ERROR);
+      }
+    });
+
+  return skill;
+};

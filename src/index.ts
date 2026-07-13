@@ -14,6 +14,7 @@ import {
   showQuickStart,
 } from './commands/interactive';
 import { createRunCommand } from './commands/run';
+import { createSkillCommand } from './commands/skill';
 import { ExitCode } from './types';
 import { CliUtils, ExecUtils } from './utils/exec';
 import { FileUtils } from './utils/file';
@@ -57,6 +58,7 @@ async function createProgram(): Promise<Command> {
   program.addCommand(createConfigCommand());
   program.addCommand(createRunCommand());
   program.addCommand(createFilesCommand());
+  program.addCommand(createSkillCommand());
 
   // List command to show environment status
   program

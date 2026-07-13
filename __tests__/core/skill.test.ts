@@ -1,7 +1,7 @@
 import fs from 'fs-extra';
 import os from 'os';
 import path from 'path';
-import { executeSkillAdd } from '../../src/commands/skill';
+import { executeSkillAdd, executeSkillRemove } from '../../src/commands/skill';
 
 const TEMPLATE_PATH = path.resolve(__dirname, '../../skills/envx/SKILL.md');
 
@@ -108,5 +108,35 @@ describe('envx skill add', () => {
     expect(
       await fs.pathExists(path.join(sub, '.agents/skills/envx/SKILL.md'))
     ).toBe(false);
+  });
+});
+
+describe('envx skill remove', () => {
+  let tmpDir: string;
+
+  beforeEach(async () => {
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'envx-skillrm-'));
+  });
+
+  afterEach(async () => {
+    await fs.remove(tmpDir);
+  });
+
+  it('removes every installed copy', async () => {
+    await fs.ensureDir(path.join(tmpDir, '.claude'));
+    await executeSkillAdd({ cwd: tmpDir });
+
+    await executeSkillRemove({ cwd: tmpDir });
+
+    expect(await fs.pathExists(path.join(tmpDir, '.agents/skills/envx'))).toBe(
+      false
+    );
+    expect(await fs.pathExists(path.join(tmpDir, '.claude/skills/envx'))).toBe(
+      false
+    );
+  });
+
+  it('is a no-op when nothing is installed', async () => {
+    await expect(executeSkillRemove({ cwd: tmpDir })).resolves.not.toThrow();
   });
 });
