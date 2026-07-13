@@ -18,6 +18,7 @@ import { createSkillCommand, executeSkillAdd } from './commands/skill';
 import { ExitCode } from './types';
 import { CliUtils, ExecUtils } from './utils/exec';
 import { FileUtils } from './utils/file';
+import { printAdvisories } from './utils/hints';
 import { InteractiveUtils } from './utils/interactive';
 
 // Package information
@@ -536,6 +537,8 @@ async function main() {
     }
 
     await program.parseAsync(process.argv);
+
+    printAdvisories(program.opts(), packageJson.version);
   } catch (error) {
     CliUtils.error(
       `Command failed: ${error instanceof Error ? error.message : String(error)}`
