@@ -63,6 +63,9 @@ describe('pickTip', () => {
 describe('printAdvisories', () => {
   let logs: string[];
   let spy: jest.SpyInstance;
+  const realTTY = process.stdout.isTTY;
+  const realCI = process.env.CI;
+  const realNoHints = process.env.ENVX_NO_HINTS;
 
   beforeEach(() => {
     logs = [];
@@ -73,7 +76,17 @@ describe('printAdvisories', () => {
 
   afterEach(() => {
     spy.mockRestore();
-    (process.stdout as { isTTY?: boolean }).isTTY = true;
+    (process.stdout as { isTTY?: boolean }).isTTY = realTTY;
+    if (realCI === undefined) {
+      delete process.env.CI;
+    } else {
+      process.env.CI = realCI;
+    }
+    if (realNoHints === undefined) {
+      delete process.env.ENVX_NO_HINTS;
+    } else {
+      process.env.ENVX_NO_HINTS = realNoHints;
+    }
   });
 
   it('prints nothing when the gate is closed', () => {
