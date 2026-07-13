@@ -26,6 +26,43 @@ files. The files themselves carry their own local changelog tables.
 
 ---
 
+## 2026-07-13 — Update note + tip after commands (`printAdvisories`)
+
+**Change type**: additive
+**Triggered by**: update-note-and-tips feature implementation — spec
+`docs/superpowers/specs/2026-07-13-envx-update-note-and-tips-design.md`, plan
+`docs/superpowers/plans/2026-07-13-envx-update-note-and-tips.md`
+
+**Code changes documented**: new `src/utils/update-check.ts` (npm registry
+version check with a 24h-throttled cache at `~/.envx/update.json`, semver
+compare, fire-and-forget detached background refresh via a `--update-worker`
+child process) and `src/utils/hints.ts` (`shouldShowHints`, a rotating `TIPS`
+list, `pickTip`, and the `printAdvisories(opts, current)` orchestrator);
+`main()` in `src/index.ts` now calls
+`printAdvisories(program.opts(), packageJson.version)` right after
+`program.parseAsync(process.argv)` inside the existing `try` block. Advisories
+print a dim one-line update note (only when a newer version is cached) plus
+one random `💡` tip, but only when interactive: suppressed when
+`!process.stdout.isTTY`, `process.env.CI`, `--quiet`, or `ENVX_NO_HINTS` is
+set. The call is wrapped so a failure inside advisories can never affect CLI
+exit behavior. No new dependencies.
+
+**Files rewritten** (3):
+
+- `README.md` (root, unversioned) — adds "Update notice & tips" subsection
+  under Commands, Table of Contents entry
+- `CLAUDE.md` (root, unversioned) — adds `printAdvisories` bullet to Code
+  Style
+- `docs/project/changes-log.md` (this entry)
+
+**ADR triggered**: none — purely additive, opt-out via `ENVX_NO_HINTS`, no
+new config-file contract.
+**Downstream actions required**:
+
+- [ ] None outstanding.
+
+---
+
 ## 2026-07-13 — `envx skill`: bundled Agent Skills template + install/remove command
 
 **Change type**: additive

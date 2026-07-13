@@ -25,6 +25,7 @@ Environment file encryption and management tool for secure development workflows
   - [envx run](#envx-run)
   - [envx files](#envx-files)
   - [envx skill](#envx-skill)
+  - [Update notice & tips](#update-notice--tips)
 - [Configuration](#configuration)
   - [.envrc File](#envrc-file)
   - [.envxrc File (Project Config)](#envxrc-file-project-config)
@@ -607,6 +608,17 @@ The same skill is installable without envx via the skills.sh ecosystem:
 
 ```bash
 npx skills add rahulretnan/envx-cli
+```
+
+### Update notice & tips
+
+After interactive commands, envx may print a dim one-line "update available"
+note (when a newer `envx-cli` is on npm) and a random usage tip. Both are
+suppressed automatically in non-interactive output (pipes, CI, `--quiet`).
+Disable them entirely with:
+
+```bash
+export ENVX_NO_HINTS=1
 ```
 
 ## Configuration

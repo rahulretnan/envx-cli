@@ -747,4 +747,14 @@ describe('CLI Integration Tests', () => {
       expect(result.stdout).toContain('skill');
     });
   });
+
+  describe('Advisory output', () => {
+    it('does not print tips or update notes in non-TTY output', () => {
+      const result = runCli('list');
+
+      expect(result.code).toBe(0);
+      expect(result.stdout).not.toContain('💡');
+      expect(result.stdout).not.toContain('Update available');
+    });
+  });
 });

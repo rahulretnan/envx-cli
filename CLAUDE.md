@@ -119,6 +119,7 @@ Two distinct config files live alongside each project:
 - `console.log` is allowed (CLI tool) — ESLint `no-console` is off.
 - Pre-commit hooks run ESLint + Prettier via husky/lint-staged.
 - Pre-existing `@typescript-eslint/no-explicit-any` warnings throughout `commands/` (raw Commander option objects) — leave them alone unless changing the surrounding logic.
+- After a command completes, `main()` calls `printAdvisories(program.opts(), version)` (`src/utils/hints.ts`) — a dim update note (via `src/utils/update-check.ts`, cache at `~/.envx/update.json`, detached background refresh) and one random tip. Suppressed when `!stdout.isTTY`, `CI`, `--quiet`, or `ENVX_NO_HINTS` is set. No new deps; never throws/blocks.
 
 ## Testing Approach
 
