@@ -14,6 +14,16 @@ const CHECK_INTERVAL_MS = 24 * 60 * 60 * 1000; // once per day
 const REGISTRY_URL = 'https://registry.npmjs.org/envx-cli/latest';
 const REQUEST_TIMEOUT_MS = 3000;
 
+// A version string reaches the TTY (getUpdateNote) from two untrusted sources:
+// the npm registry response and ~/.envx/update.json on disk. parseVersion is
+// not a sanitizer ("999.0.0]0;pwned" parses to [999,0,0]), so gate both trust
+// boundaries on this shape to keep control bytes off the terminal.
+const VALID_VERSION = /^[0-9A-Za-z.+-]{1,32}$/;
+
+function isValidVersion(v: unknown): v is string {
+  return typeof v === 'string' && VALID_VERSION.test(v);
+}
+
 function getCachePath(): string {
   return path.join(os.homedir(), '.envx', 'update.json');
 }
@@ -57,7 +67,7 @@ export function readCache(): UpdateCache | null {
     const parsed = JSON.parse(raw);
     if (
       parsed &&
-      typeof parsed.latest === 'string' &&
+      isValidVersion(parsed.latest) &&
       typeof parsed.lastCheck === 'number'
     ) {
       return parsed as UpdateCache;
@@ -105,6 +115,7 @@ export function maybeRefreshInBackground(): void {
     const child = spawn(process.execPath, [__filename, '--update-worker'], {
       detached: true,
       stdio: 'ignore',
+      windowsHide: true,
     });
     // An async spawn failure (EMFILE/EACCES/EPERM) emits 'error' on the child;
     // an unhandled 'error' on an EventEmitter throws, which would crash the CLI.
@@ -125,10 +136,11 @@ function runWorker(): void {
     let body = '';
     res.setEncoding('utf-8');
     res.on('data', chunk => (body += chunk));
+    res.on('error', () => process.exit(0));
     res.on('end', () => {
       try {
         const version = JSON.parse(body).version;
-        if (typeof version === 'string') {
+        if (isValidVersion(version)) {
           writeCache(version);
         }
       } catch {

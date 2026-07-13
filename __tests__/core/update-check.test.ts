@@ -63,6 +63,24 @@ describe('cache', () => {
     expect(readCache()).toBeNull();
   });
 
+  it('readCache returns null when latest contains control/invalid chars', async () => {
+    await fs.ensureDir(path.join(tmp, '.envx'));
+    await fs.writeFile(
+      path.join(tmp, '.envx', 'update.json'),
+      JSON.stringify({ lastCheck: Date.now(), latest: '1.0.0]0;x' })
+    );
+    expect(readCache()).toBeNull();
+  });
+
+  it('getUpdateNote returns null for a tampered (invalid-version) cache', async () => {
+    await fs.ensureDir(path.join(tmp, '.envx'));
+    await fs.writeFile(
+      path.join(tmp, '.envx', 'update.json'),
+      JSON.stringify({ lastCheck: Date.now(), latest: '999.0.0]0;pwned' })
+    );
+    expect(getUpdateNote('1.5.0')).toBeNull();
+  });
+
   it('getUpdateNote returns a note only when cache is newer', () => {
     writeCache('1.6.0');
     expect(getUpdateNote('1.5.0')).toContain('1.5.0');
@@ -72,10 +90,23 @@ describe('cache', () => {
 });
 
 describe('maybeRefreshInBackground', () => {
-  afterEach(() => jest.clearAllMocks());
+  let tmp: string;
+
+  beforeEach(async () => {
+    // Empty temp home guarantees no cache -> stale is true, so the test
+    // genuinely exercises the .js-only guard rather than the stale-check
+    // early return off the developer's real ~/.envx/update.json.
+    tmp = await fs.mkdtemp(path.join(os.tmpdir(), 'envx-upd-'));
+    jest.spyOn(os, 'homedir').mockReturnValue(tmp);
+  });
+
+  afterEach(async () => {
+    jest.restoreAllMocks();
+    jest.clearAllMocks();
+    await fs.remove(tmp);
+  });
 
   it('does not spawn under ts-node/jest (__filename is .ts)', () => {
-    // No cache written -> stale is true, but the .js-only guard blocks spawn.
     maybeRefreshInBackground();
     expect(childProcess.spawn).not.toHaveBeenCalled();
   });

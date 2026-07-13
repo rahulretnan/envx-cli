@@ -45,7 +45,9 @@ print a dim one-line update note (only when a newer version is cached) plus
 one random `💡` tip, but only when interactive: suppressed when
 `!process.stdout.isTTY`, `process.env.CI`, `--quiet`, or `ENVX_NO_HINTS` is
 set. The call is wrapped so a failure inside advisories can never affect CLI
-exit behavior. No new dependencies.
+exit behavior. No new dependencies. `envx run` intentionally does not show
+advisories — it `process.exit()`s with the child's code, bypassing the
+post-command hook, which is beneficial since it wraps another program's output.
 
 **Files rewritten** (3):
 
