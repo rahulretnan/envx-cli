@@ -2,8 +2,8 @@
 Module: Commands
 Owners: Rahul Retnan
 Status: Implemented
-Version: 1.1
-Last Updated: 2026-07-12
+Version: 1.2
+Last Updated: 2026-07-13
 ---
 
 # Module: Commands
@@ -29,6 +29,7 @@ in `src/index.ts`) and exports `createXxxCommand()` + `executeXxx()`.
 | `run`                                 | `commands/run.ts`         | Decrypt in memory, run a sub-process with vars injected    | [feature-run](./features/feature-run.md)                           |
 | `config`                              | `commands/config.ts`      | Manage `.envxrc` (show / ignore / exclude / reset)         | [feature-config](./features/feature-config.md)                     |
 | `files`                               | `commands/files.ts`       | Register + GPG-encrypt/decrypt arbitrary secret files      | [feature-files](./features/feature-files.md)                       |
+| `skill`                               | `commands/skill.ts`       | Install/remove the bundled AI-agent `SKILL.md`             | — (see [`envx skill`](#envx-skill) below)                          |
 | `init` `list`/`ls` `status` `version` | `index.ts` (inline)       | First-run setup, listing, status, version info             | [feature-project-commands](./features/feature-project-commands.md) |
 
 ## Command dispatch
@@ -85,6 +86,35 @@ registered entry, stage-bound and global alike (stage passphrases reused via
 files-only projects with no `.env.*`. See
 [feature-files](./features/feature-files.md).
 
+## `envx skill`
+
+Installs the bundled Agent Skills–standard `SKILL.md` (`skills/envx/SKILL.md`
+at the repo root, shipped via `package.json` `files`) so AI coding agents can
+read envx's workflow rules directly from the project. No passphrase or GPG
+involvement — this command only copies a static template file.
+
+- **Subcommands:** `skill add`, `skill remove`.
+- **`skill add` flags:**
+  - `-a, --agent <names...>` — install into specific agent dirs only
+    (`agents`, `claude`, `cursor`, `codex`) instead of auto-detecting.
+  - `-f, --force` — overwrite a locally edited copy that differs from the
+    template (normally skipped with a warning).
+  - `-c, --cwd <path>` — working directory used to resolve the project root.
+- **`skill remove` flags:** `-c, --cwd <path>` only.
+- **Install locations:** `.agents/skills/envx/SKILL.md` is always written
+  (the universal Agent Skills location). Without `--agent`, `skill add` also
+  auto-detects `.claude/`, `.cursor/`, `.codex/` directories at the project
+  root and installs matching copies at `.claude/skills/envx/SKILL.md`,
+  `.cursor/skills/envx/SKILL.md`, `.codex/skills/envx/SKILL.md`.
+- **Idempotency:** a target whose existing content is byte-identical to the
+  template is skipped silently ("already up to date"); a target that differs
+  (locally edited) is skipped with a warning unless `--force` is passed.
+  `skill remove` deletes each installed `skills/envx/` directory outright and
+  reports if none were found.
+- **Init integration:** `envx init` prompts to run the same install (default
+  yes) right after the `.gitignore` step; a failure during `init` only warns
+  — it never fails the init flow.
+
 ## Cross-cutting
 
 - **Config resolution order:** passphrase → flag > `.envrc` > prompt; cwd → flag >
@@ -106,3 +136,4 @@ See [test-plan.md](../test-plan.md).
 | ------- | ---------- | ------------------------------------------------------------------ |
 | 1.0     | 2026-07-12 | Initial reverse-engineered draft                                   |
 | 1.1     | 2026-07-12 | Add `files` command row + `--all` ride-along note for `envx files` |
+| 1.2     | 2026-07-13 | Add `skill` command row + `envx skill` section                     |
