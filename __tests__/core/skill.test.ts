@@ -2,6 +2,9 @@ import fs from 'fs-extra';
 import os from 'os';
 import path from 'path';
 import { executeSkillAdd, executeSkillRemove } from '../../src/commands/skill';
+import { executeInit } from '../../src/index';
+import { ExecUtils } from '../../src/utils/exec';
+import { InteractiveUtils } from '../../src/utils/interactive';
 
 const TEMPLATE_PATH = path.resolve(__dirname, '../../skills/envx/SKILL.md');
 
@@ -138,5 +141,39 @@ describe('envx skill remove', () => {
 
   it('is a no-op when nothing is installed', async () => {
     await expect(executeSkillRemove({ cwd: tmpDir })).resolves.not.toThrow();
+  });
+});
+
+describe('envx init skill prompt', () => {
+  let tmpDir: string;
+
+  beforeEach(async () => {
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'envx-initskill-'));
+    jest.spyOn(ExecUtils, 'isGpgAvailable').mockReturnValue(true);
+  });
+
+  afterEach(async () => {
+    await fs.remove(tmpDir);
+    jest.restoreAllMocks();
+  });
+
+  it('installs the skill when the user confirms', async () => {
+    jest
+      .spyOn(InteractiveUtils, 'confirmOperation')
+      .mockImplementation(async message => message.includes('agent skill'));
+
+    await executeInit({ cwd: tmpDir });
+
+    expect(
+      await fs.pathExists(path.join(tmpDir, '.agents/skills/envx/SKILL.md'))
+    ).toBe(true);
+  });
+
+  it('skips the skill when the user declines', async () => {
+    jest.spyOn(InteractiveUtils, 'confirmOperation').mockResolvedValue(false);
+
+    await executeInit({ cwd: tmpDir });
+
+    expect(await fs.pathExists(path.join(tmpDir, '.agents'))).toBe(false);
   });
 });
