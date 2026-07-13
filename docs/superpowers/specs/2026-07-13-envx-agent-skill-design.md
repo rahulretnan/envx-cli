@@ -27,7 +27,7 @@ install that file itself — no external registry required.
    `envx status`, `envx config show`. Never goes stale; no regeneration.
 3. **Two channels, one source of truth, no separate repo.** The template
    lives at `skills/envx/SKILL.md` in this repo, ships in the npm package,
-   and is what `npx skills add rahulretnan/envx` (skills.sh) discovers.
+   and is what `npx skills add rahulretnan/envx-cli` (skills.sh) discovers.
 4. **No `.envxrc` registry entry** for the skill — files on disk are the
    state (unlike `files`, there is nothing to ride along with).
 5. **Skill files are committed** — no `.gitignore` changes.
@@ -127,7 +127,7 @@ the gitignore step).
 
 No code. The repo layout (`skills/envx/SKILL.md`) is the convention the
 skills.sh CLI scans for. Verify during implementation with a dry run of
-`npx skills add rahulretnan/envx` after the file lands on `main`; adjust the
+`npx skills add rahulretnan/envx-cli` after the file lands on `main`; adjust the
 path if the CLI expects a different layout, keeping a single source of truth.
 
 ## 5. Testing
@@ -150,7 +150,7 @@ in a temp project creates `.agents/skills/envx/SKILL.md`. (Requires
 ## 6. Documentation updates
 
 - **README.md** — new "AI agent skill" section: what it does, both install
-  commands (`envx skill add`, `npx skills add rahulretnan/envx`), note that
+  commands (`envx skill add`, `npx skills add rahulretnan/envx-cli`), note that
   init offers it.
 - **CLAUDE.md** — add `skill` to the command list in Command Pattern section.
 - **docs/project/** — sync whichever command-reference docs list the CLI

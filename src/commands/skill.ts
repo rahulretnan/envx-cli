@@ -22,6 +22,8 @@ const DETECT_DIRS: Record<string, string> = {
   codex: '.codex',
 };
 
+const normalizeEol = (s: string): string => s.replace(/\r\n/g, '\n');
+
 export function resolveSkillTemplate(): string {
   // skill.ts lives in src/commands/ (dev) or dist/commands/ (published);
   // the template sits two levels up in both layouts.
@@ -65,7 +67,7 @@ export async function executeSkillAdd(rawOptions: any): Promise<void> {
 
     if (await fs.pathExists(target)) {
       const existing = await fs.readFile(target, 'utf-8');
-      if (existing === template) {
+      if (normalizeEol(existing) === normalizeEol(template)) {
         CliUtils.info(`${rel} — already up to date`);
         continue;
       }

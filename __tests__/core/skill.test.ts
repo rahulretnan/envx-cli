@@ -2,6 +2,7 @@ import fs from 'fs-extra';
 import os from 'os';
 import path from 'path';
 import { executeSkillAdd, executeSkillRemove } from '../../src/commands/skill';
+import * as skillCommand from '../../src/commands/skill';
 import { executeInit } from '../../src/index';
 import { ExecUtils } from '../../src/utils/exec';
 import { InteractiveUtils } from '../../src/utils/interactive';
@@ -100,6 +101,17 @@ describe('envx skill add', () => {
     ).rejects.toThrow(/Invalid skill options/);
   });
 
+  it('treats a CRLF checkout of an identical file as up to date', async () => {
+    await executeSkillAdd({ cwd: tmpDir });
+    const lf = await fs.readFile(canonical(), 'utf-8');
+    await fs.writeFile(canonical(), lf.replace(/\n/g, '\r\n'));
+
+    await executeSkillAdd({ cwd: tmpDir });
+
+    const after = await fs.readFile(canonical(), 'utf-8');
+    expect(after).toContain('\r\n');
+  });
+
   it('installs at the project root when run from a subdirectory', async () => {
     await fs.ensureDir(path.join(tmpDir, '.git'));
     const sub = path.join(tmpDir, 'packages/app');
@@ -175,5 +187,20 @@ describe('envx init skill prompt', () => {
     await executeInit({ cwd: tmpDir });
 
     expect(await fs.pathExists(path.join(tmpDir, '.agents'))).toBe(false);
+  });
+
+  it('warns but does not fail init when the skill install throws', async () => {
+    jest
+      .spyOn(InteractiveUtils, 'confirmOperation')
+      .mockImplementation(async message => message.includes('agent skill'));
+    jest
+      .spyOn(skillCommand, 'executeSkillAdd')
+      .mockRejectedValue(new Error('boom'));
+
+    await expect(executeInit({ cwd: tmpDir })).resolves.not.toThrow();
+
+    expect(
+      await fs.pathExists(path.join(tmpDir, '.agents/skills/envx/SKILL.md'))
+    ).toBe(false);
   });
 });

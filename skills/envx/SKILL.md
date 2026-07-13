@@ -106,5 +106,5 @@ envx create -e staging     # then edit it, then: envx encrypt -e staging
 | `envx interactive`                           | Guided secret setup for `.envrc`                                      |
 | `envx skill add/remove`                      | Install/remove this skill                                             |
 
-Useful flags everywhere: `--dry-run` (preview), `--overwrite`,
-`-c/--cwd <path>`.
+Useful flags: `--dry-run` (preview) on `encrypt`/`decrypt`/`run`/`files`;
+`--overwrite` on `decrypt`; `-c/--cwd <path>` on every command.
