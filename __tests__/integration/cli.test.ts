@@ -713,4 +713,38 @@ describe('CLI Integration Tests', () => {
       expect(result.stdout).toBe('bar|envx');
     });
   });
+
+  describe('Skill Command', () => {
+    it('should install the skill into .agents and detected agent dirs', async () => {
+      await fs.ensureDir(path.join(testDir, '.claude'));
+
+      const result = runCli('skill add');
+
+      expect(result.code).toBe(0);
+      expect(
+        await fs.pathExists(path.join(testDir, '.agents/skills/envx/SKILL.md'))
+      ).toBe(true);
+      expect(
+        await fs.pathExists(path.join(testDir, '.claude/skills/envx/SKILL.md'))
+      ).toBe(true);
+    });
+
+    it('should remove installed skill copies', async () => {
+      runCli('skill add');
+
+      const result = runCli('skill remove');
+
+      expect(result.code).toBe(0);
+      expect(
+        await fs.pathExists(path.join(testDir, '.agents/skills/envx/SKILL.md'))
+      ).toBe(false);
+    });
+
+    it('should list skill in help output', () => {
+      const result = runCli('--help');
+
+      expect(result.code).toBe(0);
+      expect(result.stdout).toContain('skill');
+    });
+  });
 });

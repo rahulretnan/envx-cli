@@ -99,3 +99,9 @@ export enum ExitCode {
   GPG_ERROR = 4,
   USER_CANCELLED = 5,
 }
+
+export interface SkillOptions {
+  cwd?: string;
+  agent?: string[];
+  force?: boolean;
+}

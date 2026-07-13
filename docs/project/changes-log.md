@@ -26,6 +26,53 @@ files. The files themselves carry their own local changelog tables.
 
 ---
 
+## 2026-07-13 — `envx skill`: bundled Agent Skills template + install/remove command
+
+**Change type**: additive
+**Triggered by**: `envx skill` feature implementation — spec
+`docs/superpowers/specs/2026-07-13-envx-agent-skill-design.md`, plan
+`docs/superpowers/plans/2026-07-13-envx-agent-skill.md`
+
+**Code changes documented**: new bundled template `skills/envx/SKILL.md`
+(Agent Skills–standard, shipped via `package.json` `files`); new
+`src/commands/skill.ts` with `executeSkillAdd`/`executeSkillRemove` and
+`createSkillCommand`, registered in `src/index.ts`; `skill add` installs to
+`.agents/skills/envx/SKILL.md` (always) plus any of `.claude`/`.cursor`/`.codex`
+detected at the project root (or explicit `--agent <names...>`), skipping
+identical copies (reported as "already up to date") and locally-edited copies
+with a warning unless `--force`; `skill remove` deletes all installed copies;
+`envx init` now
+prompts (default yes) to run the same install right after the `.gitignore`
+step, warning but not failing `init` on error; `executeInit` is now exported
+from `src/index.ts` for tests.
+
+**Files rewritten** (4):
+
+- `README.md` (root, unversioned) — adds Features bullet, `envx skill`
+  command section, Table of Contents entry
+- `CLAUDE.md` (root, unversioned) — adds `skill` command bullet to the
+  Command Pattern list
+- `docs/project/commands/commands.md` v1.1 → v1.2 — `skill` row in command
+  inventory, new `envx skill` section
+- `docs/project/changes-log.md` (this entry)
+
+**ADR triggered**: none — fits existing bundled-asset distribution pattern
+(`package.json` `files`); no new config-file contract.
+**Downstream actions required**:
+
+- [ ] `docs/project/commands/features/feature-project-commands.md`'s
+      `envx init` step list (steps 7–8) is now stale — it doesn't mention
+      the new skill-install prompt between the `.gitignore` step and the
+      quick-start guide. Out of scope for this doc-sync task (restricted to
+      README/CLAUDE/commands.md/changes-log.md); update in a follow-up.
+- [ ] Per task brief: after this lands on `main`, verify the skills.sh
+      channel from a scratch directory (`npx skills add rahulretnan/envx-cli`)
+      discovers `skills/envx/SKILL.md`; adjust the template
+      path/`resolveSkillTemplate`/`package.json` `files`/docs together if the
+      expected layout differs.
+
+---
+
 ## 2026-07-12 — Full-review fixes: cancellation, files-only projects, tmpdir isolation
 
 **Change type**: additive

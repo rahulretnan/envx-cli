@@ -14,6 +14,7 @@ import {
   showQuickStart,
 } from './commands/interactive';
 import { createRunCommand } from './commands/run';
+import { createSkillCommand, executeSkillAdd } from './commands/skill';
 import { ExitCode } from './types';
 import { CliUtils, ExecUtils } from './utils/exec';
 import { FileUtils } from './utils/file';
@@ -57,6 +58,7 @@ async function createProgram(): Promise<Command> {
   program.addCommand(createConfigCommand());
   program.addCommand(createRunCommand());
   program.addCommand(createFilesCommand());
+  program.addCommand(createSkillCommand());
 
   // List command to show environment status
   program
@@ -433,6 +435,23 @@ async function executeInit(options: any): Promise<void> {
     CliUtils.warning(`Could not update .gitignore: ${gitignoreResult.message}`);
   }
 
+  // Offer to install the agent skill for AI coding agents
+  console.log();
+  const installSkill = await InteractiveUtils.confirmOperation(
+    'Install the envx agent skill for AI coding agents (Claude Code, Cursor, Codex)?',
+    true
+  );
+
+  if (installSkill) {
+    try {
+      await executeSkillAdd({ cwd: options.cwd });
+    } catch (error) {
+      CliUtils.warning(
+        `Could not install agent skill: ${error instanceof Error ? error.message : String(error)}`
+      );
+    }
+  }
+
   // Show quick start guide
   await showQuickStart(cwd);
 
@@ -530,4 +549,4 @@ if (require.main === module) {
   main();
 }
 
-export { createProgram };
+export { createProgram, executeInit };

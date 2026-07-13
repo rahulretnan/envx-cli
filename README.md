@@ -24,6 +24,7 @@ Environment file encryption and management tool for secure development workflows
   - [envx config](#envx-config)
   - [envx run](#envx-run)
   - [envx files](#envx-files)
+  - [envx skill](#envx-skill)
 - [Configuration](#configuration)
   - [.envrc File](#envrc-file)
   - [.envxrc File (Project Config)](#envxrc-file-project-config)
@@ -76,6 +77,7 @@ EnvX is a command-line tool that helps you securely manage environment files acr
 - **Config management** CLI for managing project settings without editing JSON
 - **Beautiful CLI** with colored output and progress indicators
 - **Best practices** enforcement and security recommendations
+- 🤖 **AI agent skill**: `envx skill add` installs a SKILL.md that teaches AI coding agents (Claude Code, Cursor, Codex) the envx workflow
 
 ## Prerequisites
 
@@ -187,8 +189,9 @@ The init wizard will:
 4. Offer to add non-selected environments to the ignore list in `.envxrc`
 5. Save your selected environments to `.envxrc`
 6. Update `.gitignore` with recommended patterns
-7. Optionally start interactive secret setup
-8. Optionally encrypt your environment files immediately after setup
+7. Offer to install the envx agent skill for AI coding agents (Claude Code, Cursor, Codex)
+8. Optionally start interactive secret setup
+9. Optionally encrypt your environment files immediately after setup
 
 **Options:**
 
@@ -573,6 +576,38 @@ envx files encrypt --dry-run          # preview, no changes
 - **Idempotency and safety**: `files encrypt` skips a file whose existing `.gpg` already decrypts to identical content; `files decrypt` backs up an existing plaintext file before overwriting it and restores the backup if decryption fails — the same behavior as `envx encrypt`/`envx decrypt`.
 - **`.gitignore`**: `files add` appends the plaintext path plus a `!<path>.gpg` negation under an `# EnvX files` section, so the encrypted sibling stays committable. `--no-gitignore` skips this; `files remove` never touches `.gitignore`.
 - **Git-tracked warning**: `files add` warns if the plaintext path is already tracked by git, since the secret may already be committed to history.
+
+### `envx skill`
+
+Install an Agent Skills–standard `SKILL.md` that teaches AI coding agents
+(Claude Code, Cursor, Codex — any agent that reads the format) how to use
+envx safely in this project: the decrypt → edit → encrypt loop, `envx run`,
+the files registry, and rules against committing or printing plaintext.
+
+```bash
+# Install: writes .agents/skills/envx/SKILL.md plus copies into
+# agent dirs detected at the project root (.claude, .cursor, .codex)
+envx skill add
+
+# Target specific agents explicitly
+envx skill add --agent claude cursor
+
+# Overwrite locally edited copies
+envx skill add --force
+
+# Remove all installed copies
+envx skill remove
+```
+
+Locally edited copies are never overwritten without `--force`. Commit the
+installed files so every agent (and teammate) gets them. `envx init` offers
+this install during project setup.
+
+The same skill is installable without envx via the skills.sh ecosystem:
+
+```bash
+npx skills add rahulretnan/envx-cli
+```
 
 ## Configuration
 
